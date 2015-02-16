@@ -102,10 +102,8 @@ func listS3Bucket(config AwsConfig) []string {
 func startServer(config tomlConfig) {
 	r := gin.Default()
 	r.POST("/uploader", func(c *gin.Context) {
-		//c.String(200, "pong")
 		file, header, err := c.Request.FormFile("file")
 		//log.Println(header)
-
 		if err != nil {
 			return
 		}
@@ -143,12 +141,28 @@ func startServer(config tomlConfig) {
 			}
 		}
 
+		// done with uploaded file
+		_ = os.Remove(path)
+
+		// respond
 		if tooBig {
-			c.String(400, fmt.Sprintf("%v > %v", fi.Size(), MAX_UPLOAD_SIZE))
+			response := map[string]string{
+				"status": "error",
+				"reason": fmt.Sprintf("Upload too big. %v > %v", fi.Size(), MAX_UPLOAD_SIZE),
+			}
+			c.JSON(400, response)
 		} else if uploaded {
-			c.String(200, newFilename)
+			response := map[string]string{
+				"status":   "ok",
+				"filename": newFilename,
+			}
+			c.JSON(200, response)
 		} else {
-			c.String(500, "NOT UPLOADED")
+			response := map[string]string{
+				"status": "error",
+				"reason": "error uploading",
+			}
+			c.JSON(500, response)
 		}
 	})
 
