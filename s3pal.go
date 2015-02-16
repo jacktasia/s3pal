@@ -8,6 +8,7 @@ import (
 	"github.com/awslabs/aws-sdk-go/aws"
 	"github.com/awslabs/aws-sdk-go/gen/s3"
 	"github.com/gin-gonic/gin"
+	"gopkg.in/alecthomas/kingpin.v1"
 	"io"
 	"io/ioutil"
 	"log"
@@ -98,14 +99,7 @@ func listS3Bucket(config AwsConfig) []string {
 	return result
 }
 
-func main() {
-
-	var config tomlConfig
-	if _, err := toml.DecodeFile("s3pal.toml", &config); err != nil {
-		log.Println(err)
-		return
-	}
-
+func startServer(config tomlConfig) {
 	r := gin.Default()
 	r.POST("/uploader", func(c *gin.Context) {
 		//c.String(200, "pong")
@@ -170,4 +164,45 @@ func main() {
 	})
 
 	r.Run(fmt.Sprintf(":%d", config.Server.Port))
+}
+
+var (
+	app = kingpin.New("s3pal", "A server + cli tool for uploading to, and listing, S3 buckets")
+
+	uploadCmd    = app.Command("upload", "Upload a local or remote file to S3.")
+	uploadPath   = uploadCmd.Arg("path_or_url", "Path of local file or URL of remote file to upload to s3").Required().String()
+	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+
+	serverCmd    = app.Command("server", "Run a server for handling uploads to S3")
+	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Int()
+	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+)
+
+func main() {
+
+	var config tomlConfig
+	if _, err := toml.DecodeFile("s3pal.toml", &config); err != nil {
+		log.Println(err)
+		return
+	}
+
+	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	// Upload local file
+	case uploadCmd.FullCommand():
+		fmt.Println(*uploadPath)
+		fmt.Println(*uploadBucket)
+
+	// Start server
+	case serverCmd.FullCommand():
+		if *serverPort > 0 {
+			config.Server.Port = *serverPort
+		}
+
+		if len(*serverBucket) > 0 {
+			config.Aws.Bucket = *serverBucket
+		}
+
+		startServer(config)
+	}
+
 }
