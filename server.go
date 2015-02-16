@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -31,10 +32,10 @@ type AwsConfig struct {
 	Region    string
 }
 
-// TODO: call upload in go routine...?
+// TODO: call upload in go routine...? no since we want to know we can fetch
 // TODO; max upload should be in server config
 
-func uploadToS3(config AwsConfig, path string, contentType string, filename string) {
+func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
 	fd, err := os.Open(path)
 	if err != nil {
 		panic(err)
@@ -44,8 +45,8 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 
 	fi, err := fd.Stat()
 	if err != nil {
-		fmt.Printf("Error: no input file found in '%s'\n", os.Args[1])
-		os.Exit(1)
+		log.Printf("Error: no input file found in '%s'\n", os.Args[1])
+		return err
 	}
 
 	bucket := config.Bucket
@@ -65,11 +66,13 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 	}
 	_, err = cli.PutObject(objectreq)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		log.Printf("Error: %v\n", err)
+		return err
 	} else {
-		fmt.Printf("https://%s.s3.amazonaws.com/%s\n", bucket, filename)
+		log.Printf("https://%s.s3.amazonaws.com/%s\n", bucket, filename)
 	}
 
+	return nil
 }
 
 func listS3Bucket(config AwsConfig) []string {
@@ -87,9 +90,9 @@ func listS3Bucket(config AwsConfig) []string {
 
 	var result []string
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		log.Printf("Error: %v\n", err)
 	} else {
-		fmt.Printf("Content of bucket '%s': %d files\n", bucket, len(listresp.Contents))
+		log.Printf("Content of bucket '%s': %d files\n", bucket, len(listresp.Contents))
 		for _, obj := range listresp.Contents {
 			result = append(result, *obj.Key)
 		}
@@ -102,7 +105,7 @@ func main() {
 
 	var config tomlConfig
 	if _, err := toml.DecodeFile("uploader.toml", &config); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -110,27 +113,23 @@ func main() {
 	r.POST("/uploader", func(c *gin.Context) {
 		//c.String(200, "pong")
 		file, header, err := c.Request.FormFile("file")
-		//fmt.Println(header)
+		//log.Println(header)
 
 		if err != nil {
-			//fmt.Fprintln(w, err)
 			return
 		}
 
-		// TODO: filesize check...
-
+		// create a temp file
 		out, err := ioutil.TempFile("/tmp", "uploaded_")
 		if err != nil {
-			fmt.Println("ERROR TEMP FILE")
-			//fmt.Fprintf(w, "")
+			log.Println("ERROR TEMP FILE")
 			return
 		}
 
 		// write the content from POST to the file
 		_, err = io.Copy(out, file)
 		if err != nil {
-			//fmt.Fprintln(w, err)
-			fmt.Println("ERROR COPYING")
+			log.Println("ERROR COPYING")
 		}
 
 		file.Close()
@@ -144,8 +143,13 @@ func main() {
 		tooBig := fi.Size() > MAX_UPLOAD_SIZE
 
 		if !tooBig {
-			uploadToS3(config.Aws, path, header.Header.Get("Content-Type"), newFilename)
-			uploaded = true // TODO: confirm
+			err := uploadToS3(config.Aws, path, header.Header.Get("Content-Type"), newFilename)
+
+			if err == nil {
+				uploaded = true
+			} else {
+				log.Println(err)
+			}
 		}
 
 		if tooBig {
@@ -158,8 +162,6 @@ func main() {
 	})
 
 	r.GET("/list", func(c *gin.Context) {
-		// name := c.Params.ByName("name")
-		// message := "Hello " + name
 		items := listS3Bucket(config.Aws)
 
 		b, err := json.Marshal(items)
@@ -170,7 +172,5 @@ func main() {
 		}
 	})
 
-	// Listen and server on 0.0.0.0:8080
-	fmt.Println(config.Server.Port)
 	r.Run(fmt.Sprintf(":%d", config.Server.Port))
 }
