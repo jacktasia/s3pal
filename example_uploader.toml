@@ -1,0 +1,8 @@
+[aws]
+access_key = "AKI..."
+secret_key = "Iw3..."
+bucket = "mybucket"
+region = "us-west-2"
+
+[server]
+port = 8080
