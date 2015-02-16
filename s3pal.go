@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -31,6 +32,33 @@ type AwsConfig struct {
 	SecretKey string `toml:"secret_key"`
 	Bucket    string
 	Region    string
+}
+
+func downloadURL(url string) (*os.File, error) {
+	tmp, err := ioutil.TempFile("/tmp", "downloaded_")
+	if err != nil {
+		return nil, err
+	}
+	defer tmp.Close()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	_, err = io.Copy(tmp, resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return tmp, nil
+}
+
+func uploadPathOrURL(path string) {
+	// TODO: first see if file exists locally then try to download
+	// error reporting
+	//toUpload, err := downloadURL(path)
 }
 
 func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
@@ -180,9 +208,11 @@ func startServer(config tomlConfig) {
 	r.Run(fmt.Sprintf(":%d", config.Server.Port))
 }
 
+// TODO: use .Short() and .Default()
 var (
 	app = kingpin.New("s3pal", "A server + cli tool for uploading to, and listing, S3 buckets")
 
+	configPath   = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").String()
 	uploadCmd    = app.Command("upload", "Upload a local or remote file to S3.")
 	uploadPath   = uploadCmd.Arg("path_or_url", "Path of local file or URL of remote file to upload to s3").Required().String()
 	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
@@ -194,13 +224,16 @@ var (
 
 func main() {
 
+	parsed := kingpin.MustParse(app.Parse(os.Args[1:]))
+
 	var config tomlConfig
-	if _, err := toml.DecodeFile("s3pal.toml", &config); err != nil {
-		log.Println(err)
+	if _, err := toml.DecodeFile(*configPath, &config); err != nil {
+		fmt.Printf("Error loading config file. %v\n", err)
+		// TODO: print out URL of link to example config file.
 		return
 	}
 
-	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	switch parsed {
 	// Upload local file
 	case uploadCmd.FullCommand():
 		fmt.Println(*uploadPath)
@@ -217,6 +250,9 @@ func main() {
 		}
 
 		startServer(config)
+
+	default:
+		fmt.Println("For help run: s3pal help")
 	}
 
 }
