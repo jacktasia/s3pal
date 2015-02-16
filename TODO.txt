@@ -1,0 +1,12 @@
+* rename
+* remove gin debug mode
+* all responses (including errors) should be in JSON
+* /upload/file (html form POST + optional bucket param)
+* /upload/url (post url)
+* /list ?prefix= ?urls=1 (s3 full urls) ?bucket=
+* toml config file finder
+* toml file  path as arg --config
+* max upload in server config
+* s3pal upload <file_or_url>
+* s3pal list <bucket_name> <--prefix>
+* toml bucket config options

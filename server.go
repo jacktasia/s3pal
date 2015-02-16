@@ -32,9 +32,6 @@ type AwsConfig struct {
 	Region    string
 }
 
-// TODO: call upload in go routine...? no since we want to know we can fetch
-// TODO; max upload should be in server config
-
 func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
 	fd, err := os.Open(path)
 	if err != nil {
@@ -104,7 +101,7 @@ func listS3Bucket(config AwsConfig) []string {
 func main() {
 
 	var config tomlConfig
-	if _, err := toml.DecodeFile("uploader.toml", &config); err != nil {
+	if _, err := toml.DecodeFile("s3pal.toml", &config); err != nil {
 		log.Println(err)
 		return
 	}
