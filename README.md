@@ -19,7 +19,7 @@ This makes the following endpoints available:
 * `POST /upload/file`
 * Parameters: `file`
 
-that could handle uploads with HTML like this:
+Example HTML for uploads to this endpoint:
 
 	 <form action="http://localhost:8080/upload/file" method="post" enctype="multipart/form-data">
 		 <label for="file">Filename:</label>
@@ -31,7 +31,7 @@ that could handle uploads with HTML like this:
 * `POST /upload/url`
 * Parameters: `url`
 
-**List the contents of the bucket
+**List the contents of the bucket**
 * `GET /list`
 * Parameters: '?prefix'
 
@@ -76,4 +76,4 @@ If you have a proper `go` environment setup then it should be as easy as:
 
 ## Warnings
 
-This is a very new project. I would not use it in serious production. That said, [here's a demo using it](http://jackangers.com/imgix-wall).
+This is a very new project. I would not use the server in serious production. That said, [here's a demo using it](http://jackangers.com/imgix-wall).
