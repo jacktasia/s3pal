@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const MAX_UPLOAD_SIZE = 1000000
@@ -24,7 +25,8 @@ type tomlConfig struct {
 }
 
 type ServerConfig struct {
-	Port int `toml:"port"`
+	Port         int   `toml:"port"`
+	MaxPostBytes int64 `toml:"max_post_bytes"`
 }
 
 type AwsConfig struct {
@@ -55,16 +57,34 @@ func downloadURL(url string) (*os.File, error) {
 	return tmp, nil
 }
 
-func uploadPathOrURL(path string) {
-	// TODO: first see if file exists locally then try to download
-	// error reporting
-	//toUpload, err := downloadURL(path)
+func uploadPathOrURL(config AwsConfig, path string) (string, error) {
+	var toUpload *os.File
+	var err error
+
+	if _, err := os.Stat(path); err == nil {
+		toUpload, err = os.Open(path)
+	} else {
+		toUpload, err = downloadURL(path)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	bytes, err := ioutil.ReadFile(toUpload.Name())
+	contentType := http.DetectContentType(bytes)
+	newFilename := uuid.NewUUID().String()
+
+	err = uploadToS3(config, toUpload.Name(), contentType, newFilename)
+
+	return newFilename, err
 }
 
 func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
 	fd, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		log.Printf("Error opening temp: %v", err)
+		return err
 	}
 
 	defer fd.Close()
@@ -129,7 +149,43 @@ func listS3Bucket(config AwsConfig) []string {
 
 func startServer(config tomlConfig) {
 	r := gin.Default()
-	r.POST("/uploader", func(c *gin.Context) {
+
+	r.Use(CORSMiddleware())
+
+	r.OPTIONS("/upload/file", func(g *gin.Context) {
+		g.Abort(204)
+	})
+
+	r.POST("/upload/url", func(c *gin.Context) {
+		url := c.Request.FormValue("url")
+
+		uploaded := false
+
+		var newFilename string
+		var err error
+		if strings.HasPrefix(url, "http") {
+			newFilename, err = uploadPathOrURL(config.Aws, url)
+			if err == nil {
+				uploaded = true
+			}
+		}
+
+		if uploaded {
+			response := map[string]string{
+				"status":   "ok",
+				"filename": newFilename,
+			}
+			c.JSON(200, response)
+		} else {
+			response := map[string]string{
+				"status": "error",
+				"reason": "error uploading",
+			}
+			c.JSON(500, response)
+		}
+	})
+
+	r.POST("/upload/file", func(c *gin.Context) {
 		file, header, err := c.Request.FormFile("file")
 		//log.Println(header)
 		if err != nil {
@@ -157,7 +213,19 @@ func startServer(config tomlConfig) {
 		path := out.Name()
 		out.Close()
 		uploaded := false
-		tooBig := fi.Size() > MAX_UPLOAD_SIZE
+
+		max := config.Server.MaxPostBytes
+
+		// handle max post byte
+		// negative max is any size
+		tooBig := false
+		if max == 0 {
+			max = 4000000
+		}
+
+		if max > 0 {
+			tooBig = fi.Size() > max
+		}
 
 		if !tooBig {
 			err := uploadToS3(config.Aws, path, header.Header.Get("Content-Type"), newFilename)
@@ -221,6 +289,23 @@ var (
 	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Int()
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
 )
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+		if c.Request.Method == "OPTIONS" {
+			c.Abort(204)
+			return
+		}
+
+		c.Next()
+	}
+}
 
 func main() {
 
