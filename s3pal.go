@@ -16,8 +16,6 @@ import (
 	"strings"
 )
 
-const MAX_UPLOAD_SIZE = 1000000
-
 type tomlConfig struct {
 	Aws    AwsConfig
 	Server ServerConfig
@@ -252,7 +250,7 @@ func startServer(config tomlConfig) {
 		if tooBig {
 			response := map[string]string{
 				"status": "error",
-				"reason": fmt.Sprintf("Upload too big. %v > %v", fi.Size(), MAX_UPLOAD_SIZE),
+				"reason": fmt.Sprintf("Upload too big. %v > %v", fi.Size(), max),
 			}
 			c.JSON(400, response)
 		} else if uploaded {
@@ -290,7 +288,7 @@ func startServer(config tomlConfig) {
 
 // TODO: use .Short() and .Default()
 var (
-	app = kingpin.New("s3pal", "A server + cli tool for uploading to, and listing, S3 buckets")
+	app = kingpin.New("s3pal", "A server + cli S3 tool for uploading and listing files")
 
 	configPath   = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").String()
 	uploadCmd    = app.Command("upload", "Upload a local or remote file to S3.")
