@@ -156,7 +156,7 @@ func startServer(config tomlConfig) {
 	r.Use(CORSMiddleware())
 
 	r.OPTIONS("/upload/file", func(g *gin.Context) {
-		g.Abort(204)
+		g.String(204, "")
 	})
 
 	r.POST("/upload/url", func(c *gin.Context) {
@@ -313,7 +313,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
 		if c.Request.Method == "OPTIONS" {
-			c.Abort(204)
+			c.String(204, "")
 			return
 		}
 
