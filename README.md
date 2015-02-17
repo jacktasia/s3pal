@@ -1,12 +1,23 @@
 # s3pal
 
-A server + cli S3 tool for uploading and listing files.
+A simple server and command line S3 tool for uploading and listing files.
+
+I made this mainly for frontend demos that need access to S3, but don't need any other backend. Here's [my first project using s3pal](http://jackangers.com/imgix-wall)
+
 
 ## Overview
+
+### Server
 
 You can run a simple server to handle uploads to s3 by running:
 
 `./s3pal server`
+
+This makes the following endpoints available:
+
+**Upload a file**
+* `POST /upload/file`
+* Parameters: `file`
 
 that could handle uploads with HTML like this:
 
@@ -16,6 +27,16 @@ that could handle uploads with HTML like this:
 		 <input type="submit" name="submit" value="Submit">
 	 </form>
 
+**Upload a file from a url**
+* `POST /upload/url`
+* Parameters: `url`
+
+**List the contents of the bucket
+* `GET /list`
+* Parameters: '?prefix'
+
+
+### Command line tools
 You can upload a file on your computer
 
 `./s3pal upload ~/Pictures/mycat.jpg`
@@ -24,10 +45,6 @@ or upload a file on the internet:
 
 `./s3pal upload "https://www.google.com/images/srpr/logo11w.png"`
 
-
-## Why? (Demo)
-
-I made this mainly for frontend demos that need access to S3, but don't need any other backend. Here's [my first project using s3pal](http://jackangers.com/imgix-wall)
 
 ##Configuring
 
@@ -46,7 +63,7 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 
 ## Building
 
-Assuming you have a proper go environment setup this should be as easy as:
+If you have a proper `go` environment setup then it should be as easy as:
 
     git clone git@github.com:jacktasia/s3pal.git
     cd s3pal
@@ -59,4 +76,4 @@ Assuming you have a proper go environment setup this should be as easy as:
 
 ## Warnings
 
-This is a very young project. I would not use it in serious production. That said, [here's a demo using it](http://jackangers.com/imgix-wall)
+This is a very new project. I would not use it in serious production. That said, [here's a demo using it](http://jackangers.com/imgix-wall).
