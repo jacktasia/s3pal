@@ -288,9 +288,9 @@ func startServer(config tomlConfig) {
 
 // TODO: use .Short() and .Default()
 var (
-	app = kingpin.New("s3pal", "A server + cli S3 tool for uploading and listing files")
+	app        = kingpin.New("s3pal", "A server + cli S3 tool for uploading and listing files")
+	configPath = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").String()
 
-	configPath   = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").String()
 	uploadCmd    = app.Command("upload", "Upload a local or remote file to S3.")
 	uploadPath   = uploadCmd.Arg("path_or_url", "Path of local file or URL of remote file to upload to s3").Required().String()
 	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
@@ -298,6 +298,10 @@ var (
 	serverCmd    = app.Command("server", "Run a server for handling uploads to S3")
 	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Int()
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+
+	listCmd    = app.Command("list", "List the contents of the bucket")
+	listPrefix = listCmd.Flag("prefix", "Only list objects that have this prefix").String()
+	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").String()
 )
 
 func CORSMiddleware() gin.HandlerFunc {
@@ -349,6 +353,22 @@ func main() {
 		}
 
 		startServer(config)
+
+	case listCmd.FullCommand():
+		if len(*listBucket) > 0 {
+			config.Aws.Bucket = *listBucket
+		}
+
+		items, err := listS3Bucket(config.Aws, *listPrefix)
+
+		if err == nil {
+			for _, item := range items {
+				fmt.Println(item)
+			}
+			fmt.Printf("\n%v Objects\n", len(items))
+		} else {
+			fmt.Printf("Error listing bucket '%s': %v", *listBucket, err)
+		}
 
 	default:
 		fmt.Println("For help run: s3pal help")
