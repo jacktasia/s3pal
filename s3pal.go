@@ -2,7 +2,6 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
-	"encoding/json"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/awslabs/aws-sdk-go/aws"
@@ -57,7 +56,7 @@ func downloadURL(url string) (*os.File, error) {
 	return tmp, nil
 }
 
-func uploadPathOrURL(config AwsConfig, path string) (string, error) {
+func uploadPathOrURL(config AwsConfig, path string, prefix string) (string, error) {
 	var toUpload *os.File
 	var err error
 
@@ -73,11 +72,15 @@ func uploadPathOrURL(config AwsConfig, path string) (string, error) {
 
 	bytes, err := ioutil.ReadFile(toUpload.Name())
 	contentType := http.DetectContentType(bytes)
-	newFilename := uuid.NewUUID().String()
+	newFilename := makeFilename(prefix)
 
 	err = uploadToS3(config, toUpload.Name(), contentType, newFilename)
 
 	return newFilename, err
+}
+
+func makeFilename(prefix string) string {
+	return fmt.Sprintf("%suploaded/%s", prefix, uuid.NewUUID().String())
 }
 
 func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
@@ -121,7 +124,7 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 	return nil
 }
 
-func listS3Bucket(config AwsConfig) []string {
+func listS3Bucket(config AwsConfig, prefix string) ([]string, error) {
 	creds := aws.Creds(config.AccessKey, config.SecretKey, "")
 	cli := s3.New(creds, config.Region, nil)
 	bucket := config.Bucket
@@ -130,21 +133,23 @@ func listS3Bucket(config AwsConfig) []string {
 		Bucket: aws.StringValue(&bucket),
 	}
 	listresp, err := cli.ListObjects(&listreq)
-	if err != nil {
-		panic(err)
-	}
 
 	var result []string
 	if err != nil {
+		return result, err
+	}
+
+	if err != nil {
 		log.Printf("Error: %v\n", err)
 	} else {
-		log.Printf("Content of bucket '%s': %d files\n", bucket, len(listresp.Contents))
 		for _, obj := range listresp.Contents {
-			result = append(result, *obj.Key)
+			if len(prefix) == 0 || (len(prefix) > 0 && strings.HasPrefix(*obj.Key, prefix)) {
+				result = append(result, *obj.Key)
+			}
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 func startServer(config tomlConfig) {
@@ -158,13 +163,14 @@ func startServer(config tomlConfig) {
 
 	r.POST("/upload/url", func(c *gin.Context) {
 		url := c.Request.FormValue("url")
+		prefix := c.Request.FormValue("prefix")
 
 		uploaded := false
 
 		var newFilename string
 		var err error
 		if strings.HasPrefix(url, "http") {
-			newFilename, err = uploadPathOrURL(config.Aws, url)
+			newFilename, err = uploadPathOrURL(config.Aws, url, prefix)
 			if err == nil {
 				uploaded = true
 			}
@@ -192,6 +198,8 @@ func startServer(config tomlConfig) {
 			return
 		}
 
+		prefix := c.Request.FormValue("prefix")
+
 		// create a temp file
 		out, err := ioutil.TempFile("/tmp", "uploaded_")
 		if err != nil {
@@ -209,7 +217,7 @@ func startServer(config tomlConfig) {
 
 		fi, _ := out.Stat()
 
-		newFilename := uuid.NewUUID().String()
+		newFilename := makeFilename(prefix)
 		path := out.Name()
 		out.Close()
 		uploaded := false
@@ -263,13 +271,17 @@ func startServer(config tomlConfig) {
 	})
 
 	r.GET("/list", func(c *gin.Context) {
-		items := listS3Bucket(config.Aws)
+		prefix := c.Request.FormValue("prefix")
+		items, err := listS3Bucket(config.Aws, prefix)
 
-		b, err := json.Marshal(items)
 		if err == nil {
-			c.String(200, string(b))
+			c.JSON(200, items)
 		} else {
-			c.String(500, fmt.Sprintf("%v", err))
+			response := map[string]string{
+				"status": "error",
+				"reason": "error listing",
+			}
+			c.JSON(500, response)
 		}
 	})
 
@@ -321,8 +333,12 @@ func main() {
 	switch parsed {
 	// Upload local file
 	case uploadCmd.FullCommand():
-		fmt.Println(*uploadPath)
-		fmt.Println(*uploadBucket)
+		if len(*serverBucket) > 0 {
+			config.Aws.Bucket = *serverBucket
+		}
+
+		fmt.Printf("Uploadings %s to S3 Bucket %s", *uploadPath, *uploadBucket)
+		uploadPathOrURL(config.Aws, *uploadPath, "")
 
 	// Start server
 	case serverCmd.FullCommand():
