@@ -118,7 +118,7 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 		log.Printf("Error: %v\n", err)
 		return err
 	} else {
-		log.Printf("https://%s.s3.amazonaws.com/%s\n", bucket, filename)
+		fmt.Printf("Uploaded https://%s.s3.amazonaws.com/%s\n", bucket, filename)
 	}
 
 	return nil
@@ -337,7 +337,7 @@ func main() {
 			config.Aws.Bucket = *serverBucket
 		}
 
-		fmt.Printf("Uploadings %s to S3 Bucket %s", *uploadPath, *uploadBucket)
+		fmt.Printf("Uploading '%s' to S3 Bucket '%s'...\n", *uploadPath, *uploadBucket)
 		uploadPathOrURL(config.Aws, *uploadPath, "")
 
 	// Start server
