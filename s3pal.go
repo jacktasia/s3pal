@@ -203,7 +203,7 @@ func startServer(config tomlConfig) {
 		}
 
 		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
-			log.Println("Cache BUST (upload)")
+			log.Println("Cache BUST (upload url)")
 			listCache.timeout = 0
 		}
 
@@ -278,6 +278,11 @@ func startServer(config tomlConfig) {
 
 		// done with uploaded file
 		_ = os.Remove(path)
+
+		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
+			log.Println("Cache BUST (upload file)")
+			listCache.timeout = 0
+		}
 
 		// respond
 		if tooBig {
