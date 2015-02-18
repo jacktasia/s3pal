@@ -4,5 +4,9 @@ secret_key = "Iw3..."
 bucket = "mybucket"
 region = "us-west-2"
 
+# these are all optional
 [server]
 port = 8080
+cache_enabled = true # for /list only
+cache_bust_on_upload = true
+cache_ttl = 10

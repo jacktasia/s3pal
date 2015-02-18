@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 type tomlConfig struct {
@@ -22,8 +23,11 @@ type tomlConfig struct {
 }
 
 type ServerConfig struct {
-	Port         int   `toml:"port"`
-	MaxPostBytes int64 `toml:"max_post_bytes"`
+	Port              int   `toml:"port"`
+	MaxPostBytes      int64 `toml:"max_post_bytes"`
+	CacheEnabled      bool  `toml:"cache_enabled"`
+	CacheBustOnUpload bool  `toml:"cache_bust_on_upload"`
+	CacheTTL          int64 `toml:"cache_ttl"`
 }
 
 type AwsConfig struct {
@@ -31,6 +35,11 @@ type AwsConfig struct {
 	SecretKey string `toml:"secret_key"`
 	Bucket    string
 	Region    string
+}
+
+type ListCache struct {
+	items   []string
+	timeout int64
 }
 
 func downloadURL(url string) (*os.File, error) {
@@ -150,8 +159,27 @@ func listS3Bucket(config AwsConfig, prefix string) ([]string, error) {
 	return result, nil
 }
 
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+		if c.Request.Method == "OPTIONS" {
+			c.String(204, "")
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func startServer(config tomlConfig) {
 	r := gin.Default()
+
+	listCache := ListCache{}
 
 	r.Use(CORSMiddleware())
 
@@ -172,6 +200,11 @@ func startServer(config tomlConfig) {
 			if err == nil {
 				uploaded = true
 			}
+		}
+
+		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
+			log.Println("Cache BUST (upload)")
+			listCache.timeout = 0
 		}
 
 		if uploaded {
@@ -270,7 +303,30 @@ func startServer(config tomlConfig) {
 
 	r.GET("/list", func(c *gin.Context) {
 		prefix := c.Request.FormValue("prefix")
-		items, err := listS3Bucket(config.Aws, prefix)
+
+		makeRequest := true
+
+		if config.Server.CacheEnabled {
+			now := time.Now().Unix()
+			makeRequest = now > listCache.timeout
+		}
+
+		var items []string
+		var err error
+		if makeRequest {
+			items, err = listS3Bucket(config.Aws, prefix)
+
+			if config.Server.CacheEnabled && err == nil {
+				log.Println("Cache MISS")
+				listCache.items = make([]string, len(items))
+				copy(listCache.items, items)
+				listCache.timeout = time.Now().Unix() + config.Server.CacheTTL
+			}
+		} else {
+			items = make([]string, len(listCache.items))
+			copy(items, listCache.items)
+			log.Println("Cache HIT")
+		}
 
 		if err == nil {
 			c.JSON(200, items)
@@ -296,30 +352,13 @@ var (
 	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
 
 	serverCmd    = app.Command("server", "Run a server for handling uploads to S3")
-	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Int()
+	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
 
 	listCmd    = app.Command("list", "List the contents of the bucket")
 	listPrefix = listCmd.Flag("prefix", "Only list objects that have this prefix").String()
 	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").String()
 )
-
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		c.Writer.Header().Set("Content-Type", "application/json")
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
-		if c.Request.Method == "OPTIONS" {
-			c.String(204, "")
-			return
-		}
-
-		c.Next()
-	}
-}
 
 func main() {
 

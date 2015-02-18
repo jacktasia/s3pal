@@ -57,8 +57,12 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 	bucket = "mybucket"
 	region = "us-west-2"
 
+	# these are all optional
 	[server]
 	port = 8080
+	cache_enabled = true
+	cache_bust_on_upload = true
+	cache_ttl = 10
 
 
 ## Building
