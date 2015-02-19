@@ -38,8 +38,8 @@ type AwsConfig struct {
 }
 
 type ListCache struct {
-	items   []string
-	timeout int64
+	items   map[string][]string
+	timeout map[string]int64
 }
 
 func downloadURL(url string) (*os.File, error) {
@@ -138,7 +138,9 @@ func listS3Bucket(config AwsConfig, prefix string) ([]string, error) {
 
 	listreq := s3.ListObjectsRequest{
 		Bucket: aws.StringValue(&bucket),
+		Prefix: aws.StringValue(&prefix),
 	}
+
 	listresp, err := cli.ListObjects(&listreq)
 
 	var result []string
@@ -181,6 +183,9 @@ func startServer(config tomlConfig) {
 
 	listCache := ListCache{}
 
+	listCache.timeout = map[string]int64{}
+	listCache.items = map[string][]string{}
+
 	r.Use(CORSMiddleware())
 
 	r.OPTIONS("/upload/file", func(g *gin.Context) {
@@ -204,7 +209,7 @@ func startServer(config tomlConfig) {
 
 		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
 			log.Println("Cache BUST (upload url)")
-			listCache.timeout = 0
+			listCache.timeout[prefix] = 0
 		}
 
 		if uploaded {
@@ -224,7 +229,7 @@ func startServer(config tomlConfig) {
 
 	r.POST("/upload/file", func(c *gin.Context) {
 		file, header, err := c.Request.FormFile("file")
-		//log.Println(header)
+
 		if err != nil {
 			return
 		}
@@ -281,7 +286,7 @@ func startServer(config tomlConfig) {
 
 		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
 			log.Println("Cache BUST (upload file)")
-			listCache.timeout = 0
+			listCache.timeout[prefix] = 0
 		}
 
 		// respond
@@ -313,7 +318,7 @@ func startServer(config tomlConfig) {
 
 		if config.Server.CacheEnabled {
 			now := time.Now().Unix()
-			makeRequest = now > listCache.timeout
+			makeRequest = now > listCache.timeout[prefix]
 		}
 
 		var items []string
@@ -323,13 +328,13 @@ func startServer(config tomlConfig) {
 
 			if config.Server.CacheEnabled && err == nil {
 				log.Println("Cache MISS")
-				listCache.items = make([]string, len(items))
-				copy(listCache.items, items)
-				listCache.timeout = time.Now().Unix() + config.Server.CacheTTL
+				listCache.items[prefix] = make([]string, len(items))
+				copy(listCache.items[prefix], items)
+				listCache.timeout[prefix] = time.Now().Unix() + config.Server.CacheTTL
 			}
 		} else {
-			items = make([]string, len(listCache.items))
-			copy(items, listCache.items)
+			items = make([]string, len(listCache.items[prefix]))
+			copy(items, listCache.items[prefix])
 			log.Println("Cache HIT")
 		}
 
