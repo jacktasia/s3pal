@@ -396,11 +396,11 @@ func main() {
 	switch parsed {
 	// Upload local file
 	case uploadCmd.FullCommand():
-		if len(*serverBucket) > 0 {
-			config.Aws.Bucket = *serverBucket
+		if len(*uploadBucket) > 0 {
+			config.Aws.Bucket = *uploadBucket
 		}
 
-		fmt.Printf("Uploading '%s' to S3 Bucket '%s'...\n", *uploadPath, *uploadBucket)
+		fmt.Printf("Uploading '%s' to S3 Bucket '%s'...\n", *uploadPath, config.Aws.Bucket)
 		uploadPathOrURL(config.Aws, *uploadPath, "")
 
 	// Start server
