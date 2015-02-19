@@ -4,3 +4,5 @@
 * better error msg when port is already in use
 * server max_post_bytes middle ware
 * more argument flags
+* set user agent when downloading urls: http://stackoverflow.com/a/13263993/24998
+* check response code and bubble up non-200 when doing a url upload from cli
