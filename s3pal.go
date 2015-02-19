@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"encoding/base64"
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/awslabs/aws-sdk-go/aws"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -187,6 +189,16 @@ func startServer(config tomlConfig) {
 	listCache.items = map[string][]string{}
 
 	r.Use(CORSMiddleware())
+
+	faviconStr := "R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs="
+	favicon, _ := base64.StdEncoding.DecodeString(faviconStr)
+	faviconLen := strconv.Itoa(len(favicon))
+
+	r.GET("/favicon.ico", func(g *gin.Context) {
+		g.Writer.Header().Set("Content-Type", "image/gif")
+		g.Writer.Header().Set("Content-Length", faviconLen)
+		g.Writer.Write(favicon)
+	})
 
 	r.OPTIONS("/upload/file", func(g *gin.Context) {
 		g.String(204, "")
