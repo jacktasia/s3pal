@@ -428,7 +428,7 @@ func main() {
 			}
 			fmt.Printf("\n%v Objects\n", len(items))
 		} else {
-			fmt.Printf("Error listing bucket '%s': %v", *listBucket, err)
+			fmt.Printf("Error listing bucket '%s': %v", config.Aws.Bucket, err)
 		}
 
 	default:
