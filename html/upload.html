@@ -2,11 +2,36 @@
  <title>Upload Test</title>
  <body>
 
- <form action="http://localhost:8080/upload/file" method="post" enctype="multipart/form-data">
- <label for="file">Filename:</label>
- <input type="file" name="file" id="file">
- <input type="submit" name="submit" value="Submit">
- </form>
+	 <form action="http://localhost:8080/upload/file" method="post" enctype="multipart/form-data" id="upload-form">
+	 <input type="file" name="file" id="file" style="width:200px;height:200px;border:1px dashed #ccc">
+	 <input type="hidden" name="prefix" value="asdf">
+	 <input type="submit" name="submit" value="Submit">
+	 </form>
 
+
+	<script>
+		var uploadForm = document.getElementById("upload-form");
+
+		var doUpload = function() {
+			var uploadData = new FormData(uploadForm);
+			var xhr = new XMLHttpRequest();
+
+			xhr.onreadystatechange = function(e) {
+				if (xhr.readyState === 4) {
+					console.log(xhr.responseText);
+				}
+			}
+			xhr.open("POST", "http://localhost:8080/upload/file", true);
+
+			console.log(uploadData);
+			xhr.send(uploadData);
+		}
+
+		uploadForm.addEventListener("change", function(e) {
+			doUpload();
+		});
+
+
+	</script>
  </body>
  </html>
