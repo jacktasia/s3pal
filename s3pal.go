@@ -20,9 +20,10 @@ import (
 	"time"
 )
 
-type tomlConfig struct {
-	Aws    AwsConfig
-	Server ServerConfig
+type S3palConfig struct {
+	Aws               AwsConfig
+	Server            ServerConfig
+	FolderWatchUpload FolderWatchUploadConfig
 }
 
 type ServerConfig struct {
@@ -32,6 +33,15 @@ type ServerConfig struct {
 	CacheBustOnUpload bool  `toml:"cache_bust_on_upload"`
 	CacheTTL          int64 `toml:"cache_ttl"`
 	NoForcePort       bool  `toml:"no_force_port"`
+}
+
+type FolderWatchUploadConfig struct {
+	Path                string `toml:"path"`
+	Prefix              string `toml:"prefix"`
+	AutoDeleteFile      bool   `toml:"auto_delete_file"`
+	AutoClipboard       bool   `toml:"auto_clipboard"`
+	AutoClipboardPrefix string `toml:"auto_clipboard_prefix"`
+	Debug               bool   `toml:"debug"`
 }
 
 type AwsConfig struct {
@@ -82,7 +92,9 @@ func downloadURL(url string) (*os.File, error) {
 	return tmp, nil
 }
 
-func uploadPathOrURL(config AwsConfig, path string, prefix string) (string, error) {
+func UploadPathOrURL(config AwsConfig, path string, prefix string) (string, error) {
+
+	fmt.Printf("Uploading '%s' to S3 Bucket '%s'...\n", path, config.Bucket)
 	var toUpload *os.File
 	var err error
 
@@ -139,6 +151,7 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 		ContentType:   aws.String(contentType),
 		Key:           aws.String(filename),
 	}
+
 	_, err = cli.PutObject(objectreq)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
@@ -197,7 +210,7 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-func startServer(config tomlConfig) {
+func startServer(config S3palConfig) {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
@@ -231,7 +244,7 @@ func startServer(config tomlConfig) {
 		var newFilename string
 		var err error
 		if strings.HasPrefix(url, "http") {
-			newFilename, err = uploadPathOrURL(config.Aws, url, prefix)
+			newFilename, err = UploadPathOrURL(config.Aws, url, prefix)
 			if err == nil {
 				uploaded = true
 			}
@@ -391,29 +404,38 @@ func startServer(config tomlConfig) {
 	r.Run(fmt.Sprintf(":%d", port))
 }
 
-// TODO: use .Short() and .Default()
+// TODO: use .Short() too
 var (
 	app        = kingpin.New("s3pal", "A server + cli S3 tool for uploading and listing files")
 	configPath = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").String()
 
+	// upload
 	uploadCmd    = app.Command("upload", "Upload a local or remote file to S3.")
 	uploadPath   = uploadCmd.Arg("path_or_url", "Path of local file or URL of remote file to upload to s3").Required().String()
 	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+	uploadPrefix = uploadCmd.Flag("prefix", "S3 prefix to prepend to filename when uploading (if different from default)").String()
 
+	// upload folder
+	folderWatchUploadCmd    = app.Command("watch-folder", "When running new files added this folder will uploaded to s3.")
+	folderWatchUploadPath   = folderWatchUploadCmd.Arg("path", "Folder to watch for new files.").String()
+	folderWatchUploadBucket = folderWatchUploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+	folderWatchUploadPrefix = folderWatchUploadCmd.Flag("prefix", "S3 prefix to prepend to filename when uploading (if different from default)").String()
+
+	// server
 	serverCmd    = app.Command("server", "Run a server for handling uploads to S3")
 	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
 
+	// list
 	listCmd    = app.Command("list", "List the contents of the bucket")
 	listPrefix = listCmd.Flag("prefix", "Only list objects that have this prefix").String()
 	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").String()
 )
 
 func main() {
-
 	parsed := kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	var config tomlConfig
+	var config S3palConfig
 	if _, err := toml.DecodeFile(*configPath, &config); err != nil {
 		fmt.Printf("Error loading config file. %v\n", err)
 		// TODO: print out URL of link to example config file.
@@ -427,8 +449,22 @@ func main() {
 			config.Aws.Bucket = *uploadBucket
 		}
 
-		fmt.Printf("Uploading '%s' to S3 Bucket '%s'...\n", *uploadPath, config.Aws.Bucket)
-		uploadPathOrURL(config.Aws, *uploadPath, "")
+		UploadPathOrURL(config.Aws, *uploadPath, *uploadPrefix)
+
+	case folderWatchUploadCmd.FullCommand():
+		if len(*folderWatchUploadBucket) > 0 {
+			config.Aws.Bucket = *folderWatchUploadBucket
+		}
+
+		if len(*folderWatchUploadPath) > 0 {
+			config.FolderWatchUpload.Path = *folderWatchUploadPath
+		}
+
+		if len(*folderWatchUploadPrefix) > 0 {
+			config.FolderWatchUpload.Prefix = *folderWatchUploadPrefix
+		}
+
+		StartDropFolder(config)
 
 	// Start server
 	case serverCmd.FullCommand():
@@ -442,6 +478,7 @@ func main() {
 
 		startServer(config)
 
+	// list
 	case listCmd.FullCommand():
 		if len(*listBucket) > 0 {
 			config.Aws.Bucket = *listBucket
