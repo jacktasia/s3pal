@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -30,6 +31,7 @@ type ServerConfig struct {
 	CacheEnabled      bool  `toml:"cache_enabled"`
 	CacheBustOnUpload bool  `toml:"cache_bust_on_upload"`
 	CacheTTL          int64 `toml:"cache_ttl"`
+	NoForcePort       bool  `toml:"no_force_port"`
 }
 
 type AwsConfig struct {
@@ -42,6 +44,21 @@ type AwsConfig struct {
 type ListCache struct {
 	items   map[string][]string
 	timeout map[string]int64
+}
+
+func forcePort(port int) int {
+	tryPort := ":" + strconv.Itoa(port)
+	if port > 65535 {
+		panic("Invalid Server Port " + tryPort)
+	}
+
+	l, err := net.Listen("tcp", tryPort)
+	if err != nil {
+		return forcePort(port + 1)
+	}
+
+	l.Close()
+	return port
 }
 
 func downloadURL(url string) (*os.File, error) {
@@ -181,6 +198,7 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func startServer(config tomlConfig) {
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
 	listCache := ListCache{}
@@ -361,7 +379,16 @@ func startServer(config tomlConfig) {
 		}
 	})
 
-	r.Run(fmt.Sprintf(":%d", config.Server.Port))
+	port := forcePort(config.Server.Port)
+	if port != config.Server.Port && config.Server.NoForcePort {
+		fmt.Printf("\nNot Running! Port %v already in use.\n\n", config.Server.Port)
+		fmt.Printf("'no_force_port' option is enabled.\n\n")
+
+		return
+	}
+
+	fmt.Printf("\ns3pal is running on port %v...\n\n", port)
+	r.Run(fmt.Sprintf(":%d", port))
 }
 
 // TODO: use .Short() and .Default()

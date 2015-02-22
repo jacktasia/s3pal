@@ -1,7 +1,6 @@
 * remove gin debug mode
 * /list optional ?urls=1 (s3 full urls) ?bucket=
 * max upload in server config
-* better error msg when port is already in use
 * server max_post_bytes middle ware
 * more argument flags
 * set user agent when downloading urls: http://stackoverflow.com/a/13263993/24998
