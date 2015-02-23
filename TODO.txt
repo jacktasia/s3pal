@@ -6,4 +6,4 @@
 * set user agent when downloading urls: http://stackoverflow.com/a/13263993/24998
 * check response code and bubble up non-200 when doing a url upload from cli
 * confic static path to serve too
-* magic folder that detects new files and uploads to s3 then deletes after...
+* debug flag for server just like folder
