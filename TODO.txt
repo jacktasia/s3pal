@@ -5,5 +5,6 @@
 * more argument flags
 * set user agent when downloading urls: http://stackoverflow.com/a/13263993/24998
 * check response code and bubble up non-200 when doing a url upload from cli
-* confic static path to serve too
+* config static path to serve too
 * debug flag for server just like folder
+* remove hardcoded upload prefix "uploaded/"
