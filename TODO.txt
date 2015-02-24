@@ -1,10 +1,8 @@
-* remove gin debug mode
 * /list optional ?urls=1 (s3 full urls) ?bucket=
 * check server max_post_bytes in middleware NOT after uploaded to server
 * set user agent when downloading urls: http://stackoverflow.com/a/13263993/24998
 * check response code and bubble up non-200 when doing a url upload from cli
 * config static path to serve too
-* debug flag for server just like folder
 * hooks section pre/post upload run command
 * binaries on github (at least 64bit Linux and mac)
 * make embedded html for uploading look better
