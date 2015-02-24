@@ -5,8 +5,17 @@ bucket = "mybucket"
 region = "us-west-2"
 
 # these are all optional
+
+# for server command
 [server]
 port = 8080
 cache_enabled = true # for /list only
 cache_bust_on_upload = true
 cache_ttl = 10
+max_post_bytes = 3000000 # ~3MB
+
+# for watch-folder command
+[folderwatchupload]
+path = "/Users/jack/Desktop/toS3" # or pass in command line
+auto_clipboard = true   # defaults to false
+auto_delete_file = true # defaults to false
