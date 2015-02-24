@@ -135,8 +135,20 @@ func (o *FileReadyChecker) startWatcher() {
 
 func StartDropFolder(config S3palConfig) {
 
-	if len(config.FolderWatchUpload.Path) == 0 {
-		fmt.Printf("\nNot Running! No Path defined in config or command line\n\n")
+	path := config.FolderWatchUpload.Path
+	if len(path) == 0 {
+		fmt.Printf("\nNot Running! No Path defined in config or command line.\n\n")
+		return
+	}
+
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		fmt.Printf("\nNot Running! Could not find folder '%v'\n\n", path)
+		return
+	}
+
+	if !fileInfo.IsDir() {
+		fmt.Printf("\nNot Running! '%v' is NOT a folder.\n\n", path)
 		return
 	}
 
