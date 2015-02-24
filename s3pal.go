@@ -34,6 +34,7 @@ type ServerConfig struct {
 	NoForcePort       bool  `toml:"no_force_port"`
 	Host              string
 	Prefix            string
+	Debug             bool `toml:"debug"`
 }
 
 type FolderWatchUploadConfig struct {
@@ -245,6 +246,7 @@ var (
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
 	serverHost   = serverCmd.Flag("host", "Host to use for embedded html form (defaults to localhost").Default("localhost").String()
 	serverPrefix = serverCmd.Flag("prefix", "Prefix to use when uploading").String()
+	serverDebug  = serverCmd.Flag("debug", "Server runs in debug mode.").Bool()
 
 	// list
 	listCmd    = app.Command("list", "List the contents of the bucket")
@@ -302,6 +304,10 @@ func main() {
 
 		if len(*serverPrefix) > 0 {
 			config.Server.Prefix = *serverPrefix
+		}
+
+		if *serverDebug {
+			config.Server.Debug = *serverDebug
 		}
 
 		StartServer(config)

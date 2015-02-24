@@ -14,7 +14,13 @@ import (
 )
 
 func StartServer(config S3palConfig) {
-	gin.SetMode(gin.ReleaseMode)
+
+	if config.Server.Debug {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	r := gin.Default()
 
 	listCache := ListCache{}
