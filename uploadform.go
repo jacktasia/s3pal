@@ -24,7 +24,7 @@ func getUploadForm(config S3palConfig) string {
 
 		<form action="` + uploadEndpoint + `/upload/file" method="post" enctype="multipart/form-data" id="upload-form">
 
-			Prefix: <input type="text" name="prefix" value="" style="width:200px">
+			Prefix: <input type="text" name="prefix" value="` + config.Server.Prefix + `" style="width:200px">
 			<br>
 			<p id="msg">Drag/Drop file</p>
 			<input type="file" name="file" id="file" style="width:200px;height:200px;border:1px dashed #ccc;;">

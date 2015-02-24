@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -32,6 +33,7 @@ type ServerConfig struct {
 	CacheTTL          int64 `toml:"cache_ttl"`
 	NoForcePort       bool  `toml:"no_force_port"`
 	Host              string
+	Prefix            string
 }
 
 type FolderWatchUploadConfig struct {
@@ -128,7 +130,7 @@ func UploadPathOrURL(config AwsConfig, path string, prefix string) (string, erro
 }
 
 func makeFilename(prefix string) string {
-	return fmt.Sprintf("%suploaded/%s", prefix, uuid.NewUUID().String())
+	return path.Join(prefix, uuid.NewUUID().String())
 }
 
 func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
@@ -242,6 +244,7 @@ var (
 	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
 	serverHost   = serverCmd.Flag("host", "Host to use for embedded html form (defaults to localhost").Default("localhost").String()
+	serverPrefix = serverCmd.Flag("prefix", "Prefix to use when uploading").String()
 
 	// list
 	listCmd    = app.Command("list", "List the contents of the bucket")
@@ -295,6 +298,10 @@ func main() {
 
 		if len(*serverHost) > 0 {
 			config.Server.Host = *serverHost
+		}
+
+		if len(*serverPrefix) > 0 {
+			config.Server.Prefix = *serverPrefix
 		}
 
 		StartServer(config)
