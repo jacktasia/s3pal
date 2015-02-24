@@ -84,7 +84,7 @@ func (o *FileReadyChecker) checkFile(path string) {
 							if len(fwConfig.AutoClipboardPrefix) > 0 {
 								toCopy = fwConfig.AutoClipboardPrefix + newFilename
 							} else {
-								toCopy = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", o.Config.Aws.Bucket, newFilename)
+								toCopy = makeUrl(o.Config.Aws, newFilename)
 							}
 
 							clipboard.WriteAll(toCopy)

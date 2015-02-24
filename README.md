@@ -32,7 +32,7 @@ This makes the following endpoints available:
 
 **Upload a file**
 * `POST /upload/file`
-* Parameters: `file`
+* Parameters: `file` `prefix`
 
 Example HTML for uploads to this endpoint:
 
@@ -44,11 +44,16 @@ Example HTML for uploads to this endpoint:
 
 **Upload a file from a url**
 * `POST /upload/url`
-* Parameters: `url`
+* Parameters: `url` `prefix`
 
 **List the contents of the bucket**
 * `GET /list`
 * Parameters: '?prefix'
+
+**Simple embedded upload form**
+* `GET /`
+* Serves HTML upload form.
+
 
 
 

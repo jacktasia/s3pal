@@ -31,6 +31,7 @@ type ServerConfig struct {
 	CacheBustOnUpload bool  `toml:"cache_bust_on_upload"`
 	CacheTTL          int64 `toml:"cache_ttl"`
 	NoForcePort       bool  `toml:"no_force_port"`
+	Host              string
 }
 
 type FolderWatchUploadConfig struct {
@@ -52,6 +53,17 @@ type AwsConfig struct {
 type ListCache struct {
 	items   map[string][]string
 	timeout map[string]int64
+}
+
+func makeUrl(config AwsConfig, filename string) string {
+
+	subdomain := "s3"
+
+	if config.Region != "us-east" {
+		subdomain = subdomain + "-" + config.Region
+	}
+
+	return fmt.Sprintf("https://%s.amazonaws.com/%s/%s", subdomain, config.Bucket, filename)
 }
 
 func forcePort(port int) int {
@@ -155,7 +167,7 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 		log.Printf("Error: %v\n", err)
 		return err
 	} else {
-		fmt.Printf("Uploaded https://%s.s3.amazonaws.com/%s\n", bucket, filename)
+		fmt.Printf("Uploaded %s\n", makeUrl(config, filename))
 	}
 
 	return nil
@@ -229,6 +241,7 @@ var (
 	serverCmd    = app.Command("server", "Run a server for handling uploads to S3")
 	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
 	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+	serverHost   = serverCmd.Flag("host", "Host to use for embedded html form (defaults to localhost").Default("localhost").String()
 
 	// list
 	listCmd    = app.Command("list", "List the contents of the bucket")
@@ -278,6 +291,10 @@ func main() {
 
 		if len(*serverBucket) > 0 {
 			config.Aws.Bucket = *serverBucket
+		}
+
+		if len(*serverHost) > 0 {
+			config.Server.Host = *serverHost
 		}
 
 		StartServer(config)

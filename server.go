@@ -38,6 +38,13 @@ func StartServer(config S3palConfig) {
 		g.String(204, "")
 	})
 
+	r.GET("/", func(g *gin.Context) {
+		content := getUploadForm(config)
+		g.Writer.Header().Set("Content-Type", "text/html")
+		g.Writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
+		g.Writer.Write([]byte(content))
+	})
+
 	r.POST("/upload/url", func(c *gin.Context) {
 		url := c.Request.FormValue("url")
 		prefix := c.Request.FormValue("prefix")
@@ -146,6 +153,7 @@ func StartServer(config S3palConfig) {
 			response := map[string]string{
 				"status":   "ok",
 				"filename": newFilename,
+				"url":      makeUrl(config.Aws, newFilename),
 			}
 			c.JSON(200, response)
 		} else {

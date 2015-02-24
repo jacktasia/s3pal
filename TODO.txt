@@ -8,3 +8,4 @@
 * remove hardcoded upload prefix "uploaded/"
 * hooks section pre/post upload run command
 * binaries on github (at least 64bit Linux and mac)
+* make embedded html for uploading look better
