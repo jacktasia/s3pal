@@ -84,48 +84,63 @@ func forcePort(port int) int {
 	return port
 }
 
-func downloadURL(url string) (*os.File, error) {
-	tmp, err := ioutil.TempFile("/tmp", "downloaded_")
+func downloadURL(url string) (string, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+
 	if err != nil {
-		return nil, err
-	}
-	defer tmp.Close()
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	_, err = io.Copy(tmp, resp.Body)
-	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("Request error: %v", err)
 	}
 
-	return tmp, nil
-}
-
-func UploadPathOrURL(config AwsConfig, path string, prefix string) (string, error) {
-
-	fmt.Printf("Uploading '%s' to S3 Bucket '%s'...\n", path, config.Bucket)
-	var toUpload *os.File
-	var err error
-
-	if _, err := os.Stat(path); err == nil {
-		toUpload, err = os.Open(path)
-	} else {
-		toUpload, err = downloadURL(path)
-	}
+	req.Header.Set("User-Agent", "s3pal Downloader")
+	resp, err := client.Do(req)
 
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 
-	bytes, err := ioutil.ReadFile(toUpload.Name())
+	if resp.StatusCode > 399 {
+		return "", fmt.Errorf("%v returned by %v", resp.StatusCode, url)
+	}
+
+	tmp, err := ioutil.TempFile("/tmp", "downloaded_")
+	if err != nil {
+		return "", err
+	}
+	defer tmp.Close()
+
+	_, err = io.Copy(tmp, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return tmp.Name(), nil
+}
+
+func UploadPathOrURL(config AwsConfig, path string, prefix string) (string, error) {
+	fmt.Printf("\nUploading '%s' to S3 Bucket '%s'...\n", path, config.Bucket)
+	var toUploadPath string
+
+	_, err := os.Stat(path)
+	if err == nil {
+		f, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		toUploadPath = f.Name()
+	} else {
+		toUploadPath, err = downloadURL(path)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	bytes, err := ioutil.ReadFile(toUploadPath)
 	contentType := http.DetectContentType(bytes)
 	newFilename := makeFilename(prefix)
 
-	err = uploadToS3(config, toUpload.Name(), contentType, newFilename)
+	err = uploadToS3(config, toUploadPath, contentType, newFilename)
 
 	return newFilename, err
 }
@@ -255,7 +270,11 @@ func main() {
 			config.Aws.Bucket = *uploadBucket
 		}
 
-		UploadPathOrURL(config.Aws, *uploadPath, *uploadPrefix)
+		_, err := UploadPathOrURL(config.Aws, *uploadPath, *uploadPrefix)
+
+		if err != nil {
+			fmt.Printf("\nNot Uploaded! Error: %v\n\n", err)
+		}
 
 	case folderWatchUploadCmd.FullCommand():
 		if len(*folderWatchUploadBucket) > 0 {
