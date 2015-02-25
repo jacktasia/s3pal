@@ -13,6 +13,23 @@ import (
 	"time"
 )
 
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.String(204, "")
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func StartServer(config S3palConfig) {
 
 	if config.Server.Debug {
@@ -39,6 +56,26 @@ func StartServer(config S3palConfig) {
 		g.Writer.Header().Set("Content-Length", faviconLen)
 		g.Writer.Write(favicon)
 	})
+
+	if len(config.Server.StaticPath) > 0 {
+		path := config.Server.StaticPath
+		fileInfo, err := os.Stat(path)
+		setupStatic := true
+		if err != nil {
+			fmt.Printf("\nServer static path ignored! Could not find folder '%v'\n\n", path)
+			setupStatic = false
+		}
+
+		if setupStatic && !fileInfo.IsDir() {
+			fmt.Printf("\nServer static path ignored! '%v' is NOT a folder.\n\n", path)
+			setupStatic = false
+		}
+
+		if setupStatic {
+			fmt.Printf("\nServing directory '%v' from /static\n", path)
+			r.Static("/static", path)
+		}
+	}
 
 	r.OPTIONS("/upload/file", func(g *gin.Context) {
 		g.String(204, "")

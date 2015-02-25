@@ -13,6 +13,7 @@ cache_enabled = true # for /list only
 cache_bust_on_upload = true
 cache_ttl = 10
 max_post_bytes = 3000000 # ~3MB
+static_path="/home/jack/assets" # directory served from /static (optional)
 
 # for watch-folder command
 [folderwatchupload]

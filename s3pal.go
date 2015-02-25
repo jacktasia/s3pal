@@ -6,7 +6,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/awslabs/aws-sdk-go/aws"
 	"github.com/awslabs/aws-sdk-go/gen/s3"
-	"github.com/gin-gonic/gin"
 	"gopkg.in/alecthomas/kingpin.v1"
 	"io"
 	"io/ioutil"
@@ -34,7 +33,8 @@ type ServerConfig struct {
 	NoForcePort       bool  `toml:"no_force_port"`
 	Host              string
 	Prefix            string
-	Debug             bool `toml:"debug"`
+	Debug             bool   `toml:"debug"`
+	StaticPath        string `toml:"static_path"`
 }
 
 type FolderWatchUploadConfig struct {
@@ -206,23 +206,6 @@ func listS3Bucket(config AwsConfig, prefix string) ([]string, error) {
 	return result, nil
 }
 
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		c.Writer.Header().Set("Content-Type", "application/json")
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
-		if c.Request.Method == "OPTIONS" {
-			c.String(204, "")
-			return
-		}
-
-		c.Next()
-	}
-}
-
 // TODO: use .Short() too
 var (
 	app        = kingpin.New("s3pal", "A server + cli S3 tool for uploading and listing files")
@@ -241,12 +224,13 @@ var (
 	folderWatchUploadPrefix = folderWatchUploadCmd.Flag("prefix", "S3 prefix to prepend to filename when uploading (if different from default)").String()
 
 	// server
-	serverCmd    = app.Command("server", "Run a server for handling uploads to S3")
-	serverPort   = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
-	serverBucket = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
-	serverHost   = serverCmd.Flag("host", "Host to use for embedded html form (defaults to localhost").Default("localhost").String()
-	serverPrefix = serverCmd.Flag("prefix", "Prefix to use when uploading").String()
-	serverDebug  = serverCmd.Flag("debug", "Server runs in debug mode.").Bool()
+	serverCmd        = app.Command("server", "Run a server for handling uploads to S3")
+	serverPort       = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
+	serverBucket     = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+	serverHost       = serverCmd.Flag("host", "Host to use for embedded html form (defaults to localhost").Default("localhost").String()
+	serverPrefix     = serverCmd.Flag("prefix", "Prefix to use when uploading").String()
+	serverDebug      = serverCmd.Flag("debug", "Server runs in debug mode.").Bool()
+	serverStaticPath = serverCmd.Flag("static-path", "Serve this directory on /static").String()
 
 	// list
 	listCmd    = app.Command("list", "List the contents of the bucket")
@@ -308,6 +292,10 @@ func main() {
 
 		if *serverDebug {
 			config.Server.Debug = *serverDebug
+		}
+
+		if len(*serverStaticPath) > 0 {
+			config.Server.StaticPath = *serverStaticPath
 		}
 
 		StartServer(config)
