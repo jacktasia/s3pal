@@ -7,11 +7,27 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func forcePort(port int) int {
+	tryPort := ":" + strconv.Itoa(port)
+	if port > 65535 {
+		panic("Invalid Server Port " + tryPort)
+	}
+
+	l, err := net.Listen("tcp", tryPort)
+	if err != nil {
+		return forcePort(port + 1)
+	}
+
+	l.Close()
+	return port
+}
 
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -30,9 +46,9 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-func StartServer(config S3palConfig) {
+func (s *S3pal) startServer() {
 
-	if config.Server.Debug {
+	if s.Config.Server.Debug {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -57,8 +73,8 @@ func StartServer(config S3palConfig) {
 		g.Writer.Write(favicon)
 	})
 
-	if len(config.Server.StaticPath) > 0 {
-		path := config.Server.StaticPath
+	if len(s.Config.Server.StaticPath) > 0 {
+		path := s.Config.Server.StaticPath
 		fileInfo, err := os.Stat(path)
 		setupStatic := true
 		if err != nil {
@@ -82,7 +98,7 @@ func StartServer(config S3palConfig) {
 	})
 
 	r.GET("/", func(g *gin.Context) {
-		content := getUploadForm(config)
+		content := s.getUploadForm()
 		g.Writer.Header().Set("Content-Type", "text/html")
 		g.Writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		g.Writer.Write([]byte(content))
@@ -97,13 +113,13 @@ func StartServer(config S3palConfig) {
 		var newFilename string
 		var err error
 		if strings.HasPrefix(url, "http") {
-			newFilename, err = UploadPathOrURL(config.Aws, url, prefix)
+			newFilename, err = s.uploadPathOrURL(url, prefix)
 			if err == nil {
 				uploaded = true
 			}
 		}
 
-		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
+		if s.Config.Server.CacheEnabled && s.Config.Server.CacheBustOnUpload {
 			log.Println("Cache BUST (upload url)")
 			listCache.timeout[prefix] = 0
 		}
@@ -154,7 +170,7 @@ func StartServer(config S3palConfig) {
 		out.Close()
 		uploaded := false
 
-		max := config.Server.MaxPostBytes
+		max := s.Config.Server.MaxPostBytes
 
 		// handle max post byte
 		// negative max is any size
@@ -168,7 +184,7 @@ func StartServer(config S3palConfig) {
 		}
 
 		if !tooBig {
-			err := uploadToS3(config.Aws, path, header.Header.Get("Content-Type"), newFilename)
+			err := s.uploadToS3(path, header.Header.Get("Content-Type"), newFilename)
 
 			if err == nil {
 				uploaded = true
@@ -180,7 +196,7 @@ func StartServer(config S3palConfig) {
 		// done with uploaded file
 		_ = os.Remove(path)
 
-		if config.Server.CacheEnabled && config.Server.CacheBustOnUpload {
+		if s.Config.Server.CacheEnabled && s.Config.Server.CacheBustOnUpload {
 			log.Println("Cache BUST (upload file)")
 			listCache.timeout[prefix] = 0
 		}
@@ -196,7 +212,7 @@ func StartServer(config S3palConfig) {
 			response := map[string]string{
 				"status":   "ok",
 				"filename": newFilename,
-				"url":      makeUrl(config.Aws, newFilename),
+				"url":      s.makeUrl(newFilename),
 			}
 			c.JSON(200, response)
 		} else {
@@ -213,7 +229,7 @@ func StartServer(config S3palConfig) {
 
 		makeRequest := true
 
-		if config.Server.CacheEnabled {
+		if s.Config.Server.CacheEnabled {
 			now := time.Now().Unix()
 			makeRequest = now > listCache.timeout[prefix]
 		}
@@ -221,13 +237,13 @@ func StartServer(config S3palConfig) {
 		var items []string
 		var err error
 		if makeRequest {
-			items, err = listS3Bucket(config.Aws, prefix)
+			items, err = listS3Bucket(s.Config.Aws, prefix)
 
-			if config.Server.CacheEnabled && err == nil {
+			if s.Config.Server.CacheEnabled && err == nil {
 				log.Println("Cache MISS")
 				listCache.items[prefix] = make([]string, len(items))
 				copy(listCache.items[prefix], items)
-				listCache.timeout[prefix] = time.Now().Unix() + config.Server.CacheTTL
+				listCache.timeout[prefix] = time.Now().Unix() + s.Config.Server.CacheTTL
 			}
 		} else {
 			items = make([]string, len(listCache.items[prefix]))
@@ -246,9 +262,9 @@ func StartServer(config S3palConfig) {
 		}
 	})
 
-	port := forcePort(config.Server.Port)
-	if port != config.Server.Port && config.Server.NoForcePort {
-		fmt.Printf("\nNot Running! Port %v already in use.\n\n", config.Server.Port)
+	port := forcePort(s.Config.Server.Port)
+	if port != s.Config.Server.Port && s.Config.Server.NoForcePort {
+		fmt.Printf("\nNot Running! Port %v already in use.\n\n", s.Config.Server.Port)
 		fmt.Printf("'no_force_port' option is enabled.\n\n")
 
 		return

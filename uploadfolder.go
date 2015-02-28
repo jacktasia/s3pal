@@ -13,7 +13,7 @@ type FileReadyChecker struct {
 	DelayTickChan   map[string]*time.Ticker
 	LastFileDetails map[string]*FileDetails
 	Debug           bool
-	Config          S3palConfig
+	S3pal           *S3pal
 }
 
 type FileDetails struct {
@@ -47,7 +47,7 @@ func (o *FileReadyChecker) checkFile(path string) {
 		val.Stop()
 	}
 
-	fwConfig := o.Config.FolderWatchUpload
+	fwConfig := o.S3pal.Config.FolderWatchUpload
 	o.LastFileDetails[path] = getFileDetails(path)
 
 	//log.Println("Size now:", *o.LastFileDetails[path])
@@ -58,14 +58,12 @@ func (o *FileReadyChecker) checkFile(path string) {
 		for {
 			select {
 			case <-o.DelayTickChan[path].C:
-				//log.Println("Checking...", path)
-
 				now := getFileDetails(path)
 
 				if now.Readable && now.Size == o.LastFileDetails[path].Size {
 					o.DelayTickChan[path].Stop()
 
-					newFilename, err := UploadPathOrURL(o.Config.Aws, path, fwConfig.Prefix)
+					newFilename, err := o.S3pal.uploadPathOrURL(path, fwConfig.Prefix)
 					if err == nil {
 
 						if fwConfig.AutoDeleteFile {
@@ -84,7 +82,7 @@ func (o *FileReadyChecker) checkFile(path string) {
 							if len(fwConfig.AutoClipboardPrefix) > 0 {
 								toCopy = fwConfig.AutoClipboardPrefix + newFilename
 							} else {
-								toCopy = makeUrl(o.Config.Aws, newFilename)
+								toCopy = o.S3pal.makeUrl(newFilename)
 							}
 
 							clipboard.WriteAll(toCopy)
@@ -125,17 +123,17 @@ func (o *FileReadyChecker) startWatcher() {
 		}
 	}()
 
-	err = watcher.Add(o.Config.FolderWatchUpload.Path)
-	fmt.Printf("\nLooking for new files in '%v'...\n", o.Config.FolderWatchUpload.Path)
+	err = watcher.Add(o.S3pal.Config.FolderWatchUpload.Path)
+	fmt.Printf("\nLooking for new files in '%v'...\n", o.S3pal.Config.FolderWatchUpload.Path)
 	if err != nil {
 		log.Fatal(err)
 	}
 	<-done
 }
 
-func StartDropFolder(config S3palConfig) {
+func (s *S3pal) startDropFolder() {
 
-	path := config.FolderWatchUpload.Path
+	path := s.Config.FolderWatchUpload.Path
 	if len(path) == 0 {
 		fmt.Printf("\nNot Running! No Path defined in config or command line.\n\n")
 		return
@@ -155,7 +153,7 @@ func StartDropFolder(config S3palConfig) {
 	o := FileReadyChecker{
 		DelayTickChan:   map[string]*time.Ticker{},
 		LastFileDetails: map[string]*FileDetails{},
-		Config:          config,
+		S3pal:           s,
 	}
 
 	o.startWatcher()

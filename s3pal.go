@@ -10,11 +10,9 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 )
 
@@ -47,10 +45,11 @@ type FolderWatchUploadConfig struct {
 }
 
 type AwsConfig struct {
-	AccessKey string `toml:"access_key"`
-	SecretKey string `toml:"secret_key"`
-	Bucket    string
-	Region    string
+	AccessKey        string `toml:"access_key"`
+	SecretKey        string `toml:"secret_key"`
+	Bucket           string
+	Region           string
+	UploadNameFormat string `toml:"upload_name_format"`
 }
 
 type ListCache struct {
@@ -58,30 +57,18 @@ type ListCache struct {
 	timeout map[string]int64
 }
 
-func makeUrl(config AwsConfig, filename string) string {
-
-	subdomain := "s3"
-
-	if config.Region != "us-east" {
-		subdomain = subdomain + "-" + config.Region
-	}
-
-	return fmt.Sprintf("https://%s.amazonaws.com/%s/%s", subdomain, config.Bucket, filename)
+type S3pal struct {
+	Config S3palConfig
 }
 
-func forcePort(port int) int {
-	tryPort := ":" + strconv.Itoa(port)
-	if port > 65535 {
-		panic("Invalid Server Port " + tryPort)
+func (s *S3pal) makeUrl(filename string) string {
+	subdomain := "s3"
+
+	if s.Config.Aws.Region != "us-east" {
+		subdomain = subdomain + "-" + s.Config.Aws.Region
 	}
 
-	l, err := net.Listen("tcp", tryPort)
-	if err != nil {
-		return forcePort(port + 1)
-	}
-
-	l.Close()
-	return port
+	return fmt.Sprintf("https://%s.amazonaws.com/%s/%s", subdomain, s.Config.Aws.Bucket, filename)
 }
 
 func downloadURL(url string) (string, error) {
@@ -118,8 +105,8 @@ func downloadURL(url string) (string, error) {
 	return tmp.Name(), nil
 }
 
-func UploadPathOrURL(config AwsConfig, path string, prefix string) (string, error) {
-	fmt.Printf("\nUploading '%s' to S3 Bucket '%s'...\n", path, config.Bucket)
+func (s *S3pal) uploadPathOrURL(path string, prefix string) (string, error) {
+	fmt.Printf("\nUploading '%s' to S3 Bucket '%s'...\n", path, s.Config.Aws.Bucket)
 	var toUploadPath string
 
 	_, err := os.Stat(path)
@@ -140,7 +127,7 @@ func UploadPathOrURL(config AwsConfig, path string, prefix string) (string, erro
 	contentType := http.DetectContentType(bytes)
 	newFilename := makeFilename(prefix)
 
-	err = uploadToS3(config, toUploadPath, contentType, newFilename)
+	err = s.uploadToS3(toUploadPath, contentType, newFilename)
 
 	return newFilename, err
 }
@@ -149,7 +136,7 @@ func makeFilename(prefix string) string {
 	return path.Join(prefix, uuid.NewUUID().String())
 }
 
-func uploadToS3(config AwsConfig, path string, contentType string, filename string) (err error) {
+func (s *S3pal) uploadToS3(path string, contentType string, filename string) (err error) {
 	fd, err := os.Open(path)
 	if err != nil {
 		log.Printf("Error opening temp: %v", err)
@@ -164,12 +151,12 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 		return err
 	}
 
-	bucket := config.Bucket
+	bucket := s.Config.Aws.Bucket
 	if len(contentType) == 0 {
 		contentType = "binary/octet-stream"
 	}
-	creds := aws.Creds(config.AccessKey, config.SecretKey, "")
-	cli := s3.New(creds, config.Region, nil)
+	creds := aws.Creds(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey, "")
+	cli := s3.New(creds, s.Config.Aws.Region, nil)
 
 	objectreq := &s3.PutObjectRequest{
 		ACL:           aws.String("public-read"),
@@ -185,7 +172,7 @@ func uploadToS3(config AwsConfig, path string, contentType string, filename stri
 		log.Printf("Error: %v\n", err)
 		return err
 	} else {
-		fmt.Printf("Uploaded %s\n", makeUrl(config, filename))
+		fmt.Printf("Uploaded %s\n", s.makeUrl(filename))
 	}
 
 	return nil
@@ -263,69 +250,75 @@ func main() {
 		return
 	}
 
+	s3pal := &S3pal{
+		Config: config,
+	}
+
 	switch parsed {
-	// Upload local file
+
+	// upload local file or URL
 	case uploadCmd.FullCommand():
 		if len(*uploadBucket) > 0 {
-			config.Aws.Bucket = *uploadBucket
+			s3pal.Config.Aws.Bucket = *uploadBucket
 		}
 
-		_, err := UploadPathOrURL(config.Aws, *uploadPath, *uploadPrefix)
+		_, err := s3pal.uploadPathOrURL(*uploadPath, *uploadPrefix)
 
 		if err != nil {
 			fmt.Printf("\nNot Uploaded! Error: %v\n\n", err)
 		}
 
+	// watch folder for new files and then upload
 	case folderWatchUploadCmd.FullCommand():
 		if len(*folderWatchUploadBucket) > 0 {
-			config.Aws.Bucket = *folderWatchUploadBucket
+			s3pal.Config.Aws.Bucket = *folderWatchUploadBucket
 		}
 
 		if len(*folderWatchUploadPath) > 0 {
-			config.FolderWatchUpload.Path = *folderWatchUploadPath
+			s3pal.Config.FolderWatchUpload.Path = *folderWatchUploadPath
 		}
 
 		if len(*folderWatchUploadPrefix) > 0 {
-			config.FolderWatchUpload.Prefix = *folderWatchUploadPrefix
+			s3pal.Config.FolderWatchUpload.Prefix = *folderWatchUploadPrefix
 		}
 
-		StartDropFolder(config)
+		s3pal.startDropFolder()
 
 	// Start server
 	case serverCmd.FullCommand():
 		if *serverPort > 0 {
-			config.Server.Port = *serverPort
+			s3pal.Config.Server.Port = *serverPort
 		}
 
 		if len(*serverBucket) > 0 {
-			config.Aws.Bucket = *serverBucket
+			s3pal.Config.Aws.Bucket = *serverBucket
 		}
 
 		if len(*serverHost) > 0 {
-			config.Server.Host = *serverHost
+			s3pal.Config.Server.Host = *serverHost
 		}
 
 		if len(*serverPrefix) > 0 {
-			config.Server.Prefix = *serverPrefix
+			s3pal.Config.Server.Prefix = *serverPrefix
 		}
 
 		if *serverDebug {
-			config.Server.Debug = *serverDebug
+			s3pal.Config.Server.Debug = *serverDebug
 		}
 
 		if len(*serverStaticPath) > 0 {
-			config.Server.StaticPath = *serverStaticPath
+			s3pal.Config.Server.StaticPath = *serverStaticPath
 		}
 
-		StartServer(config)
+		s3pal.startServer()
 
 	// list
 	case listCmd.FullCommand():
 		if len(*listBucket) > 0 {
-			config.Aws.Bucket = *listBucket
+			s3pal.Config.Aws.Bucket = *listBucket
 		}
 
-		items, err := listS3Bucket(config.Aws, *listPrefix)
+		items, err := listS3Bucket(s3pal.Config.Aws, *listPrefix)
 
 		if err == nil {
 			for _, item := range items {
@@ -333,7 +326,7 @@ func main() {
 			}
 			fmt.Printf("\n%v Objects\n", len(items))
 		} else {
-			fmt.Printf("Error listing bucket '%s': %v", config.Aws.Bucket, err)
+			fmt.Printf("Error listing bucket '%s': %v", s3pal.Config.Aws.Bucket, err)
 		}
 
 	default:

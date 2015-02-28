@@ -4,12 +4,12 @@ import (
 	"strconv"
 )
 
-func getUploadForm(config S3palConfig) string {
+func (s *S3pal) getUploadForm() string {
 
-	uploadEndpoint := "http://" + config.Server.Host + ":" + strconv.Itoa(config.Server.Port) + "/upload/file"
+	uploadEndpoint := "http://" + s.Config.Server.Host + ":" + strconv.Itoa(s.Config.Server.Port) + "/upload/file"
 
 	return `<html>
- <title>s3pal uploader to ` + config.Aws.Bucket + `</title>
+ <title>s3pal uploader to ` + s.Config.Aws.Bucket + `</title>
  <style type="text/css">
 	.box {
 		float:left;width:450px;height:450px;float:left;border:1px solid black;margin:5px;padding:5px;
@@ -19,12 +19,12 @@ func getUploadForm(config S3palConfig) string {
 	<h1>s3pal</h1>
 	<p>This needs to look better.</p>
 	<div class="box">
-		<h2>Upload to ` + config.Aws.Bucket + `</h2>
+		<h2>Upload to ` + s.Config.Aws.Bucket + `</h2>
 
 
 		<form action="` + uploadEndpoint + `/upload/file" method="post" enctype="multipart/form-data" id="upload-form">
 
-			Prefix: <input type="text" name="prefix" value="` + config.Server.Prefix + `" style="width:200px">
+			Prefix: <input type="text" name="prefix" value="` + s.Config.Server.Prefix + `" style="width:200px">
 			<br>
 			<p id="msg">Drag/Drop file</p>
 			<input type="file" name="file" id="file" style="width:200px;height:200px;border:1px dashed #ccc;;">
