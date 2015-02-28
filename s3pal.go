@@ -258,8 +258,8 @@ func main() {
 
 	var config S3palConfig
 	if _, err := toml.DecodeFile(*configPath, &config); err != nil {
-		fmt.Printf("Error loading config file. %v\n", err)
-		// TODO: print out URL of link to example config file.
+		fmt.Printf("\nError loading config file. \"%v\"\n", err)
+		fmt.Printf("\nSee example s3pal.toml file: %v\n\n", "https://github.com/jacktasia/s3pal/blob/master/sample_s3pal.toml")
 		return
 	}
 
