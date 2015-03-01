@@ -31,14 +31,14 @@ func forcePort(port int) int {
 
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
 
 		if c.Request.Method == "OPTIONS" {
-			c.String(204, "")
+			//c.String(204, "")
+			c.Abort()
 			return
 		}
 
@@ -92,10 +92,6 @@ func (s *S3pal) startServer() {
 			r.Static("/static", path)
 		}
 	}
-
-	r.OPTIONS("/upload/file", func(g *gin.Context) {
-		g.String(204, "")
-	})
 
 	r.GET("/", func(g *gin.Context) {
 		content := s.getUploadForm()
