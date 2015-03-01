@@ -165,7 +165,7 @@ func (s *S3pal) startServer() {
 
 		fi, _ := out.Stat()
 
-		newFilename := makeFilename(prefix)
+		newFilename := s.makeFilename(prefix, header.Filename)
 		path := out.Name()
 		out.Close()
 		uploaded := false

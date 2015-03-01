@@ -132,7 +132,6 @@ func (o *FileReadyChecker) startWatcher() {
 }
 
 func (s *S3pal) startDropFolder() {
-
 	path := s.Config.FolderWatchUpload.Path
 	if len(path) == 0 {
 		fmt.Printf("\nNot Running! No Path defined in config or command line.\n\n")

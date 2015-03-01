@@ -1,6 +1,5 @@
 * switch to goamz lib
 * permissions + signing options
-* option "upload_file_name" formatting %U (uuid) %F (full filename) %N (name only w/o extension) %E(extension) %T(unix timestamp)
 * /list optional ?urls=1 (s3 full urls) ?bucket=
 * check server max_post_bytes in middleware NOT after uploaded to server
 * hooks section pre/post upload run command

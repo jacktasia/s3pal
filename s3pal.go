@@ -13,7 +13,9 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type S3palConfig struct {
@@ -105,19 +107,19 @@ func downloadURL(url string) (string, error) {
 	return tmp.Name(), nil
 }
 
-func (s *S3pal) uploadPathOrURL(path string, prefix string) (string, error) {
-	fmt.Printf("\nUploading '%s' to S3 Bucket '%s'...\n", path, s.Config.Aws.Bucket)
+func (s *S3pal) uploadPathOrURL(filePath string, prefix string) (string, error) {
+	fmt.Printf("\nUploading '%s' to S3 Bucket '%s'...\n", filePath, s.Config.Aws.Bucket)
 	var toUploadPath string
 
-	_, err := os.Stat(path)
+	_, err := os.Stat(filePath)
 	if err == nil {
-		f, err := os.Open(path)
+		f, err := os.Open(filePath)
 		if err != nil {
 			return "", err
 		}
 		toUploadPath = f.Name()
 	} else {
-		toUploadPath, err = downloadURL(path)
+		toUploadPath, err = downloadURL(filePath)
 		if err != nil {
 			return "", err
 		}
@@ -125,15 +127,39 @@ func (s *S3pal) uploadPathOrURL(path string, prefix string) (string, error) {
 
 	bytes, err := ioutil.ReadFile(toUploadPath)
 	contentType := http.DetectContentType(bytes)
-	newFilename := makeFilename(prefix)
+	newFilename := s.makeFilename(prefix, path.Base(filePath))
 
 	err = s.uploadToS3(toUploadPath, contentType, newFilename)
 
 	return newFilename, err
 }
 
-func makeFilename(prefix string) string {
-	return path.Join(prefix, uuid.NewUUID().String())
+// %U (uuid) %F (full filename) %N (name only w/o extension) %E(extension) %T(unix timestamp)
+func (s *S3pal) makeFilename(prefix string, filename string) string {
+	now := time.Now()
+	t := now.UTC()
+	day := fmt.Sprintf("%02d", t.Day())
+	month := fmt.Sprintf("%02d", t.Month())
+	year := fmt.Sprintf("%d", t.Year())
+	uuid := uuid.NewUUID().String()
+	ts := strconv.FormatInt(now.Unix(), 10)
+
+	ext := path.Ext(filename)
+	name := strings.Replace(filename, ext, "", -1)
+
+	format := s.Config.Aws.UploadNameFormat
+
+	newFilename := strings.Replace(format, "%F", filename, -1)
+	newFilename = strings.Replace(newFilename, "%N", name, -1)
+	newFilename = strings.Replace(newFilename, "%E", ext, -1)
+
+	newFilename = strings.Replace(newFilename, "%T", ts, -1)
+	newFilename = strings.Replace(newFilename, "%Y", year, -1)
+	newFilename = strings.Replace(newFilename, "%M", month, -1)
+	newFilename = strings.Replace(newFilename, "%D", day, -1)
+	newFilename = strings.Replace(newFilename, "%U", uuid, -1)
+
+	return path.Join(prefix, newFilename)
 }
 
 func (s *S3pal) uploadToS3(path string, contentType string, filename string) (err error) {
