@@ -87,9 +87,9 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 
 The `upload_name_format` option lets you control how uploaded files will be created in your bucket.
 
-If this is unset it defaults to "uploads/%Y/%M/%D/%N_%T%E" which means if a file named `mycat.jpg` is uploaded on March 26, 2014 it will create a key like this `uploads/2014/03/26/mycat_1395792362.jpg`.
+If this is unset it defaults to `"uploads/%Y/%M/%D/%N_%T%E"` which means if a file named `mycat.jpg` is uploaded on March 26, 2014 it will create a key like this `uploads/2014/03/26/mycat_1395792362.jpg`.
 
-| directive   | meaning  | exammple  |
+| directive   | meaning  | example  |
 |---|---|---|
 | `%F` | filename with extension | `cat.jpg` |
 | `%N` | filename name (without extension) | `cat` |
