@@ -67,6 +67,7 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 	secret_key = "Iw3..."
 	bucket = "mybucket"
 	region = "us-west-2"
+	upload_name_format="uploads/%Y/%M/%D/%N_%T%E" # this is the default
 
 	# these are all optional
 	[server]
@@ -82,6 +83,22 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 	auto_clipboard = true   # defaults to false
 	auto_delete_file = true # defaults to false
 
+##### `upload_name_format` options
+
+The `upload_name_format` option lets you control how uploaded files will be created in your bucket.
+
+If this is unset it defaults to "uploads/%Y/%M/%D/%N_%T%E" which means if a file named `mycat.jpg` is uploaded on March 26, 2014 it will create a key like this `uploads/2014/03/26/mycat_1395792362.jpg`.
+
+| directive   | meaning  | exammple  |
+|---|---|---|
+| `%F` | filename with extension | `cat.jpg` |
+| `%N` | filename name (without extension) | `cat` |
+| `%E` | extension of uploaded filename  | `.jpg` |
+|`%T` | unix timestamp | `1425254762` |
+|`%Y` | current year in 4 digits | `2015` |
+|`%M` | current month in 2 digits | `04` |
+|`%D` | current day in 2 digits | `09` |
+|`%U` | a UUID | `0228a689-b578-11e4-b56c-0090f5c994d5` |
 
 ## Building
 
