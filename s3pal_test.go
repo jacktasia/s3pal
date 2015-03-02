@@ -27,7 +27,7 @@ func TestUploadNameF(t *testing.T) {
 
 	result := s3pal.makeFilename("", "test.jpg")
 	expected := "/blah/test.jpg"
-	assert.Equal(t, result, expected)
+	assert.Equal(t, expected, result)
 }
 
 func TestUploadNameTsExt(t *testing.T) {
@@ -37,11 +37,11 @@ func TestUploadNameTsExt(t *testing.T) {
 
 	ts := strconv.FormatInt(time.Now().Unix(), 10)
 	expected := fmt.Sprintf("/ts/cat_%s.jpg", ts)
-	assert.Equal(t, result, expected)
+	assert.Equal(t, expected, result)
 }
 
-func TestWithYMD(t *testing.T) {
-	s3pal := getS3palWithFormat("/images/%Y/%M/%D/animals.png")
+func TestWithDefaultUploadNameOption(t *testing.T) {
+	s3pal := getS3palWithFormat("")
 
 	now := time.Now()
 	ts := now.UTC()
@@ -50,8 +50,8 @@ func TestWithYMD(t *testing.T) {
 	year := fmt.Sprintf("%d", ts.Year())
 
 	result := s3pal.makeFilename("", "animals.jpg")
-	expected := fmt.Sprintf("/images/%s/%s/%s/animals.png", year, month, day)
-	assert.Equal(t, result, expected)
+	expected := fmt.Sprintf("uploads/%s/%s/%s/animals_%v.jpg", year, month, day, ts.Unix())
+	assert.Equal(t, expected, result)
 }
 
 func TestWithUUID(t *testing.T) {

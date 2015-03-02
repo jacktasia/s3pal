@@ -149,6 +149,10 @@ func (s *S3pal) makeFilename(prefix string, filename string) string {
 
 	format := s.Config.Aws.UploadNameFormat
 
+	if len(format) == 0 {
+		format = "uploads/%Y/%M/%D/%N_%T%E"
+	}
+
 	newFilename := strings.Replace(format, "%F", filename, -1)
 	newFilename = strings.Replace(newFilename, "%N", name, -1)
 	newFilename = strings.Replace(newFilename, "%E", ext, -1)
