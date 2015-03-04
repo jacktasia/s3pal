@@ -208,10 +208,10 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 	return nil
 }
 
-func listS3Bucket(config AwsConfig, prefix string) ([]string, error) {
-	creds := aws.Creds(config.AccessKey, config.SecretKey, "")
-	cli := s3.New(creds, config.Region, nil)
-	bucket := config.Bucket
+func (s *S3pal) listS3Bucket(prefix string) ([]string, error) {
+	creds := aws.Creds(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey, "")
+	cli := s3.New(creds, s.Config.Aws.Region, nil)
+	bucket := s.Config.Aws.Bucket
 
 	listreq := s3.ListObjectsRequest{
 		Bucket: aws.StringValue(&bucket),
@@ -348,7 +348,7 @@ func main() {
 			s3pal.Config.Aws.Bucket = *listBucket
 		}
 
-		items, err := listS3Bucket(s3pal.Config.Aws, *listPrefix)
+		items, err := s3pal.listS3Bucket(*listPrefix)
 
 		if err == nil {
 			for _, item := range items {

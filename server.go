@@ -233,7 +233,7 @@ func (s *S3pal) startServer() {
 		var items []string
 		var err error
 		if makeRequest {
-			items, err = listS3Bucket(s.Config.Aws, prefix)
+			items, err = s.listS3Bucket(prefix)
 
 			if s.Config.Server.CacheEnabled && err == nil {
 				log.Println("Cache MISS")
