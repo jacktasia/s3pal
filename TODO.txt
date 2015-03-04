@@ -1,5 +1,6 @@
 * add more tests
 * switch to goamz lib?
+* allow setting region on command line (use bucket location to try to pull out the region)?
 * permissions + signing options
 * /list optional ?urls=1 (s3 full urls) ?bucket=
 * check server max_post_bytes in middleware NOT after uploaded to server
