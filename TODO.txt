@@ -1,6 +1,4 @@
-* set up travis ci
 * add more tests
-* move list function into s3pal struct
 * switch to goamz lib?
 * permissions + signing options
 * /list optional ?urls=1 (s3 full urls) ?bucket=
