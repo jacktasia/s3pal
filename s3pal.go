@@ -238,15 +238,14 @@ func (s *S3pal) listS3Bucket(prefix string) ([]string, error) {
 	return result, nil
 }
 
-// TODO: use .Short() too
 var (
 	app        = kingpin.New("s3pal", "A server + cli S3 tool for uploading and listing files")
-	configPath = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").String()
+	configPath = app.Flag("config", "The path to a  non-default location config file.").Default("s3pal.toml").Short('c').String()
 
 	// upload
 	uploadCmd    = app.Command("upload", "Upload a local or remote file to S3.")
 	uploadPath   = uploadCmd.Arg("path_or_url", "Path of local file or URL of remote file to upload to s3").Required().String()
-	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+	uploadBucket = uploadCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").Short('b').String()
 	uploadPrefix = uploadCmd.Flag("prefix", "S3 prefix to prepend to filename when uploading (if different from default)").String()
 
 	// upload folder
@@ -257,8 +256,8 @@ var (
 
 	// server
 	serverCmd        = app.Command("server", "Run a server for handling uploads to S3")
-	serverPort       = serverCmd.Flag("port", "The port to the run the upload server on").Default("8080").Int()
-	serverBucket     = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").String()
+	serverPort       = serverCmd.Flag("port", "The port to the run the upload server on").Int()
+	serverBucket     = serverCmd.Flag("bucket", "S3 bucket name to upload to (if different from default)").Short('b').String()
 	serverHost       = serverCmd.Flag("host", "Host to use for embedded html form (defaults to localhost").Default("localhost").String()
 	serverPrefix     = serverCmd.Flag("prefix", "Prefix to use when uploading").String()
 	serverDebug      = serverCmd.Flag("debug", "Server runs in debug mode.").Bool()
@@ -267,7 +266,7 @@ var (
 	// list
 	listCmd    = app.Command("list", "List the contents of the bucket")
 	listPrefix = listCmd.Flag("prefix", "Only list objects that have this prefix").String()
-	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").String()
+	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").Short('b').String()
 )
 
 func main() {
@@ -318,6 +317,11 @@ func main() {
 	case serverCmd.FullCommand():
 		if *serverPort > 0 {
 			s3pal.Config.Server.Port = *serverPort
+		}
+
+		// handle default here...
+		if s3pal.Config.Server.Port == 0 {
+			s3pal.Config.Server.Port = 8080
 		}
 
 		if len(*serverBucket) > 0 {
