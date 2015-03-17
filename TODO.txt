@@ -7,3 +7,8 @@
 * hooks section pre/post upload run command
 * binaries on github (at least 64bit Linux and mac)
 * make embedded html for uploading look better
+* --configure option to prompt for specific settings (like s3cmd)
+* bulk update headers like s3cmd
+	s3cmd modify --recursive --add-header=Cache-Control:max-age=86400 s3://BUCKET/FOLDER
+	https://github.com/s3tools/s3cmd/blob/80c82f79df1b308ce5a95e9934a2bbad9cb943c9/S3/S3.py#L709
+* sane cache-control defaults when uploading with config to override
