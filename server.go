@@ -139,6 +139,14 @@ func (s *S3pal) startServer() {
 		file, header, err := c.Request.FormFile("file")
 
 		if err != nil {
+			fmt.Printf("ERROR: %v (probably no \"file\" field uploaded)\n", err)
+
+			response := map[string]string{
+				"status": "error",
+				"reason": "No \"file\" field defined",
+			}
+			c.JSON(400, response)
+
 			return
 		}
 
@@ -258,14 +266,7 @@ func (s *S3pal) startServer() {
 		}
 	})
 
-	port := forcePort(s.Config.Server.Port)
-	if port != s.Config.Server.Port && s.Config.Server.NoForcePort {
-		fmt.Printf("\nNot Running! Port %v already in use.\n\n", s.Config.Server.Port)
-		fmt.Printf("'no_force_port' option is enabled.\n\n")
-
-		return
-	}
-
+	port := s.Config.Server.Port
 	fmt.Printf("\ns3pal is running on port %v...\n\n", port)
 	r.Run(fmt.Sprintf(":%d", port))
 }
