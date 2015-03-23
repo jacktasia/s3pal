@@ -344,6 +344,16 @@ func main() {
 			s3pal.Config.Server.StaticPath = *serverStaticPath
 		}
 
+		port := forcePort(s3pal.Config.Server.Port)
+		if port != s3pal.Config.Server.Port && s3pal.Config.Server.NoForcePort {
+			fmt.Printf("\nNot Running! Port %v already in use.\n\n", s3pal.Config.Server.Port)
+			fmt.Printf("'no_force_port' option is enabled.\n\n")
+
+			return
+		}
+
+		s3pal.Config.Server.Port = port
+
 		s3pal.startServer()
 
 	// list
