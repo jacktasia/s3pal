@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/user"
 	"path"
 	"strconv"
 	"strings"
@@ -269,8 +270,27 @@ var (
 	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").Short('b').String()
 )
 
+func Exists(name string) bool {
+	if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	parsed := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	if !Exists(*configPath) {
+		usr, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		fmt.Println(usr.HomeDir)
+		*configPath = path.Join(usr.HomeDir, "s3pal.toml")
+	}
 
 	var config S3palConfig
 	if _, err := toml.DecodeFile(*configPath, &config); err != nil {
