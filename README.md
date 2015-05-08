@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/jacktasia/s3pal.svg?branch=master)](https://travis-ci.org/jacktasia/s3pal)
 
+**The dependency [aws-sdk-go](https://github.com/awslabs/aws-sdk-go) has changed a lot, which has broken the build. I will be updating s3pal to use [goamz/goamz](https://github.com/goamz/goamz) instead when time permits.**
+
 A command line tool to help developers interact with s3.
 
 * uploading of local files and urls
