@@ -288,7 +288,6 @@ func main() {
 			log.Fatal(err)
 			return
 		}
-		fmt.Println(usr.HomeDir)
 		*configPath = path.Join(usr.HomeDir, "s3pal.toml")
 	}
 
