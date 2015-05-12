@@ -194,6 +194,19 @@ func (s *S3pal) makeFilename(prefix string, filename string) string {
 	return path.Join(prefix, newFilename)
 }
 
+func (s *S3pal) getBucket() *s3.Bucket {
+	auth, err := aws.GetAuth(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey)
+
+	if err != nil {
+		panic("Could not connect to S3 with your credentials.")
+	}
+
+	client := s3.New(auth, aws.Regions[s.Config.Aws.Region])
+	bucket := client.Bucket(s.Config.Aws.Bucket)
+
+	return bucket
+}
+
 func (s *S3pal) uploadToS3(path string, contentType string, filename string) (err error) {
 	fd, err := os.Open(path)
 	if err != nil {
@@ -207,15 +220,7 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 		contentType = "binary/octet-stream"
 	}
 
-	auth, auth_err := aws.GetAuth(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey)
-
-	if auth_err != nil {
-		return auth_err
-	}
-
-	client := s3.New(auth, aws.Regions[s.Config.Aws.Region])
-
-	bucket := client.Bucket(s.Config.Aws.Bucket)
+	bucket := s.getBucket()
 
 	bytes, readErr := ioutil.ReadAll(fd)
 
@@ -237,17 +242,7 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 
 func (s *S3pal) listS3Bucket(prefix string, urls bool, doSign bool, signTTL int64) ([]string, error) {
 
-	// todo make get bucket its own function... DRY
-	auth, auth_err := aws.GetAuth(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey)
-	if auth_err != nil {
-		return []string{}, auth_err
-	}
-
-	region := aws.Regions[s.Config.Aws.Region]
-	client := s3.New(auth, region)
-
-	bucket := client.Bucket(s.Config.Aws.Bucket)
-
+	bucket := s.getBucket()
 	listresp, err := bucket.List(prefix, "", "", 0)
 
 	var result []string
