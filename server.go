@@ -230,6 +230,7 @@ func (s *S3pal) startServer() {
 
 	r.GET("/list", func(c *gin.Context) {
 		prefix := c.Request.FormValue("prefix")
+		urls := strToBool(c.Request.FormValue("urls"))
 
 		makeRequest := true
 
@@ -241,7 +242,7 @@ func (s *S3pal) startServer() {
 		var items []string
 		var err error
 		if makeRequest {
-			items, err = s.listS3Bucket(prefix)
+			items, err = s.listS3Bucket(prefix, urls, s.Config.Server.SignURL, s.Config.Server.SignTTL)
 
 			if s.Config.Server.CacheEnabled && err == nil {
 				log.Println("Cache MISS")

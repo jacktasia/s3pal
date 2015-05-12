@@ -36,6 +36,8 @@ type ServerConfig struct {
 	Prefix            string
 	Debug             bool   `toml:"debug"`
 	StaticPath        string `toml:"static_path"`
+	SignTTL           int64  `toml:"sign_ttl"`
+	SignURL           bool   `toml:"sign_url"`
 }
 
 type FolderWatchUploadConfig struct {
@@ -72,6 +74,15 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func strToBool(s string) bool {
+	r, err := strconv.ParseBool(s)
+	if err != nil {
+		return false
+	}
+
+	return r
 }
 
 var ValidACLs = []string{"private", "public-read", "public-read-write", "authenticated-read", "bucket-owner-read", "bucket-owner-full-control"}
@@ -224,7 +235,7 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 	return nil
 }
 
-func (s *S3pal) listS3Bucket(prefix string) ([]string, error) {
+func (s *S3pal) listS3Bucket(prefix string, urls bool, doSign bool, signTTL int64) ([]string, error) {
 
 	// todo make get bucket its own function... DRY
 	auth, auth_err := aws.GetAuth(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey)
@@ -244,12 +255,24 @@ func (s *S3pal) listS3Bucket(prefix string) ([]string, error) {
 		return result, err
 	}
 
+	now := time.Now()
+	ttl := time.Duration(signTTL) * time.Second
+	signExpires := now.Add(ttl)
+
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	} else {
 		for _, obj := range listresp.Contents {
 			if len(prefix) == 0 || (len(prefix) > 0 && strings.HasPrefix(obj.Key, prefix)) {
-				result = append(result, obj.Key)
+				if urls {
+					if doSign {
+						result = append(result, bucket.SignedURL(obj.Key, signExpires))
+					} else {
+						result = append(result, bucket.URL(obj.Key))
+					}
+				} else {
+					result = append(result, obj.Key)
+				}
 			}
 		}
 	}
@@ -283,9 +306,12 @@ var (
 	serverStaticPath = serverCmd.Flag("static-path", "Serve this directory on /static").String()
 
 	// list
-	listCmd    = app.Command("list", "List the contents of the bucket")
-	listPrefix = listCmd.Flag("prefix", "Only list objects that have this prefix").String()
-	listBucket = listCmd.Flag("bucket", "The S3 bucket for listing objects.").Short('b').String()
+	listCmd     = app.Command("list", "List the contents of the bucket")
+	listPrefix  = listCmd.Flag("prefix", "Only list objects that have this prefix").String()
+	listBucket  = listCmd.Flag("bucket", "S3 bucket for listing objects.").Short('b').String()
+	listUrls    = listCmd.Flag("url", "List full urls and not just key names").Bool()
+	listSign    = listCmd.Flag("sign", "Sign the S3 urls").Bool()
+	listSignTTL = listCmd.Flag("sign-ttl", "TTL for signed URLs").Default("300").Int64()
 )
 
 func Exists(name string) bool {
@@ -408,7 +434,7 @@ func main() {
 			s3pal.Config.Aws.Bucket = *listBucket
 		}
 
-		items, err := s3pal.listS3Bucket(*listPrefix)
+		items, err := s3pal.listS3Bucket(*listPrefix, *listUrls, *listSign, *listSignTTL)
 
 		if err == nil {
 			for _, item := range items {
