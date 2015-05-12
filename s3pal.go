@@ -4,8 +4,8 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	"github.com/awslabs/aws-sdk-go/aws"
-	"github.com/awslabs/aws-sdk-go/gen/s3"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 	"gopkg.in/alecthomas/kingpin.v1"
 	"io"
 	"io/ioutil"
@@ -52,6 +52,7 @@ type AwsConfig struct {
 	SecretKey        string `toml:"secret_key"`
 	Bucket           string
 	Region           string
+	ACL              string
 	UploadNameFormat string `toml:"upload_name_format"`
 }
 
@@ -62,6 +63,21 @@ type ListCache struct {
 
 type S3pal struct {
 	Config S3palConfig
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+var ValidACLs = []string{"private", "public-read", "public-read-write", "authenticated-read", "bucket-owner-read", "bucket-owner-full-control"}
+
+func IsValidACL(acl string) bool {
+	return stringInSlice(acl, ValidACLs)
 }
 
 func (s *S3pal) makeUrl(filename string) string {
@@ -176,29 +192,28 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 
 	defer fd.Close()
 
-	fi, err := fd.Stat()
-	if err != nil {
-		log.Printf("Error: no input file found in '%s'\n", os.Args[1])
-		return err
-	}
-
-	bucket := s.Config.Aws.Bucket
 	if len(contentType) == 0 {
 		contentType = "binary/octet-stream"
 	}
-	creds := aws.Creds(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey, "")
-	cli := s3.New(creds, s.Config.Aws.Region, nil)
 
-	objectreq := &s3.PutObjectRequest{
-		ACL:           aws.String("public-read"),
-		Bucket:        aws.String(bucket),
-		Body:          fd,
-		ContentLength: aws.Long(int64(fi.Size())),
-		ContentType:   aws.String(contentType),
-		Key:           aws.String(filename),
+	auth, auth_err := aws.GetAuth(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey)
+
+	if auth_err != nil {
+		return auth_err
 	}
 
-	_, err = cli.PutObject(objectreq)
+	client := s3.New(auth, aws.Regions[s.Config.Aws.Region])
+
+	bucket := client.Bucket(s.Config.Aws.Bucket)
+
+	bytes, readErr := ioutil.ReadAll(fd)
+
+	if readErr != nil {
+		return readErr
+	}
+
+	err = bucket.Put(filename, bytes, contentType, s3.ACL(s.Config.Aws.ACL))
+
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 		return err
@@ -210,16 +225,19 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 }
 
 func (s *S3pal) listS3Bucket(prefix string) ([]string, error) {
-	creds := aws.Creds(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey, "")
-	cli := s3.New(creds, s.Config.Aws.Region, nil)
-	bucket := s.Config.Aws.Bucket
 
-	listreq := s3.ListObjectsRequest{
-		Bucket: aws.StringValue(&bucket),
-		Prefix: aws.StringValue(&prefix),
+	// todo make get bucket its own function... DRY
+	auth, auth_err := aws.GetAuth(s.Config.Aws.AccessKey, s.Config.Aws.SecretKey)
+	if auth_err != nil {
+		return []string{}, auth_err
 	}
 
-	listresp, err := cli.ListObjects(&listreq)
+	region := aws.Regions[s.Config.Aws.Region]
+	client := s3.New(auth, region)
+
+	bucket := client.Bucket(s.Config.Aws.Bucket)
+
+	listresp, err := bucket.List(prefix, "", "", 0)
 
 	var result []string
 	if err != nil {
@@ -230,8 +248,8 @@ func (s *S3pal) listS3Bucket(prefix string) ([]string, error) {
 		log.Printf("Error: %v\n", err)
 	} else {
 		for _, obj := range listresp.Contents {
-			if len(prefix) == 0 || (len(prefix) > 0 && strings.HasPrefix(*obj.Key, prefix)) {
-				result = append(result, *obj.Key)
+			if len(prefix) == 0 || (len(prefix) > 0 && strings.HasPrefix(obj.Key, prefix)) {
+				result = append(result, obj.Key)
 			}
 		}
 	}
@@ -300,6 +318,15 @@ func main() {
 
 	s3pal := &S3pal{
 		Config: config,
+	}
+
+	if s3pal.Config.Aws.ACL == "" {
+		s3pal.Config.Aws.ACL = "public-read"
+	}
+
+	if !IsValidACL(s3pal.Config.Aws.ACL) {
+		fmt.Printf("\n\"%v\" is not a valid ACL.\n", s3pal.Config.Aws.ACL)
+		fmt.Printf("\nValid ACL options are: %v\n", strings.Join(ValidACLs, ", "))
 	}
 
 	switch parsed {
