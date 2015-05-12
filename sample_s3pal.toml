@@ -14,6 +14,8 @@ cache_bust_on_upload = true
 cache_ttl = 10
 max_post_bytes = 3000000 # ~3MB
 static_path="/home/jack/assets" # directory served from /static (optional)
+sign_ttl = 300 # in seconds, so this is 5 minutes
+sign_url = true # always sign URLs if a URL is requested. this defaults to false
 
 # for watch-folder command
 [folderwatchupload]
