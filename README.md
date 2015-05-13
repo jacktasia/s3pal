@@ -1,6 +1,7 @@
-# s3pal
+s3pal [![Build Status](https://travis-ci.org/jacktasia/s3pal.svg?branch=master)](https://travis-ci.org/jacktasia/s3pal)
+========
 
-[![Build Status](https://travis-ci.org/jacktasia/s3pal.svg?branch=master)](https://travis-ci.org/jacktasia/s3pal)
+
 
 A command line tool to help developers interact with s3.
 
@@ -114,7 +115,7 @@ If you have a proper `go` environment setup then it should be as easy as:
     git clone git@github.com:jacktasia/s3pal.git
     cd s3pal
 	go get ./... # install dependencies
-	go build *.go
+	go build
 	./s3pal help # test help
 	#cp sample_s3pal.toml s3pal.toml
 	#emacs s3pal.toml
