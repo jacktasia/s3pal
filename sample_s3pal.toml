@@ -4,7 +4,12 @@ secret_key = "Iw3..."
 bucket = "mybucket"
 region = "us-west-2"
 
-# these are all optional
+
+# config below is all optional
+
+[aws.upload_headers]
+Cache-Control = "max-age=86400"
+x-amz-meta-test = "tester" # must use x-amz-meta- for non-standard or s3 will drop it
 
 # for server command
 [server]

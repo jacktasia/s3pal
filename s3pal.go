@@ -55,7 +55,8 @@ type AwsConfig struct {
 	Bucket           string
 	Region           string
 	ACL              string
-	UploadNameFormat string `toml:"upload_name_format"`
+	UploadNameFormat string            `toml:"upload_name_format"`
+	UploadHeaders    map[string]string `toml:"upload_headers"`
 }
 
 type ListCache struct {
@@ -228,7 +229,15 @@ func (s *S3pal) uploadToS3(path string, contentType string, filename string) (er
 		return readErr
 	}
 
-	err = bucket.Put(filename, bytes, contentType, s3.ACL(s.Config.Aws.ACL))
+	headers := map[string][]string{
+		"Content-Type": []string{contentType},
+	}
+
+	for key, value := range s.Config.Aws.UploadHeaders {
+		headers[key] = []string{value}
+	}
+
+	err = bucket.PutHeader(filename, bytes, headers, s3.ACL(s.Config.Aws.ACL))
 
 	if err != nil {
 		log.Printf("Error: %v\n", err)

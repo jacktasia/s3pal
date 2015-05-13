@@ -61,7 +61,7 @@ Example HTML for uploads to this endpoint:
 
 ##Configuring
 
-You configure `s3pal` using a toml config file. `s3pal` automatically looks for `s3pal.toml` in the working directory. Alternatively you can use the `--config` flag to provide a path. Everything except for the s3 section is optional. Most values can be set/overriden on the command line.
+You configure `s3pal` using a toml config file. `s3pal` automatically looks for `s3pal.toml` in the working directory. If it's not there then it checks the user's home directory `~`. Alternatively you can use the `--config` flag to provide a path. Everything except for the s3 section is optional. Most values can be set/overriden on the command line.
 
 #### Example config
 	[aws]
@@ -71,7 +71,12 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 	region = "us-west-2"
 	upload_name_format="uploads/%Y/%M/%D/%N_%T%E" # this is the default
 
-	# these are all optional
+	# config below is all optional
+
+	[aws.upload_headers]
+	Cache-Control= "max-age=86400"
+	x-amz-meta-test= "value" # must use x-amz-meta- for non-standard or s3 will drop it
+
 	[server]
 	port = 8080 # this is the default
 	cache_enabled = true # defaults to false
