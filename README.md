@@ -22,19 +22,19 @@ Here's [an example](http://jackangers.com/imgix-wall) of me using the server fea
 ## Overview
 
 
-### `./s3pal watch-folder <folder>`
+### `s3pal watch-folder <folder>`
 
 Watch a folder for new files and upload them to S3. There are options to auto delete and copy URL (see configuring).
 
-### `./s3pal upload <path>`
+### `s3pal upload <path>`
 
-Upload a file on your computer like `./s3pal upload ~/Pictures/mycat.jpg`
+Upload a file on your computer like `s3pal upload ~/Pictures/mycat.jpg`
 
-### `./s3pal upload <url>`
+### `s3pal upload <url>`
 
-Upload a file on the internet: `./s3pal upload "https://www.google.com/images/srpr/logo11w.png"`
+Upload a file on the internet: `s3pal upload "https://www.google.com/images/srpr/logo11w.png"`
 
-### `./s3pal server`
+### `s3pal server`
 
 A simple server to handle uploads to s3 by running:
 
