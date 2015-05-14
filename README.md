@@ -2,7 +2,6 @@ s3pal [![Build Status](https://travis-ci.org/jacktasia/s3pal.svg?branch=master)]
 ========
 
 
-
 A command line tool to help developers interact with s3.
 
 * uploading of local files and urls
@@ -12,6 +11,14 @@ A command line tool to help developers interact with s3.
 
 Here's [an example](http://jackangers.com/imgix-wall) of me using the server feature.
 
+* [Overview](#overview)
+* [Configuring](#configuring)
+* [Installing](#installing)
+* [Building](#building)
+* [Warnings](#warnings)
+
+
+<a name="overview"></a>
 ## Overview
 
 
@@ -59,7 +66,7 @@ Example HTML for uploads to this endpoint:
 
 
 
-
+<a name="configuring"></a>
 ##Configuring
 
 You configure `s3pal` using a toml config file. `s3pal` automatically looks for `s3pal.toml` in the working directory. If it's not there then it checks the user's home directory `~`. Alternatively you can use the `--config` flag to provide a path. Everything except for the s3 section is optional. Most values can be set/overriden on the command line.
@@ -108,6 +115,15 @@ If this is unset it defaults to `"uploads/%Y/%M/%D/%N_%T%E"` which means if a fi
 |`%D` | current day in 2 digits | `09` |
 |`%U` | a UUID | `0228a689-b578-11e4-b56c-0090f5c994d5` |
 
+<a name="installing"></a>
+## Installing
+
+Download the static binary from [releases](https://github.com/jacktasia/s3pal/releases) or build a binary yourself (see **Building** below). Either way, ensure your `~/.profile` (mac) or `~/.bashrc` (linux) has the s3pal binary's directory in your path:
+
+    export PATH=$PATH:/path/to/s3pal
+
+
+<a name="building"></a>
 ## Building
 
 If you have a proper `go` environment setup then it should be as easy as:
@@ -121,6 +137,7 @@ If you have a proper `go` environment setup then it should be as easy as:
 	#emacs s3pal.toml
 	#./s3pal server
 
+<a name="warnings"></a>
 ## Warnings
 
 This is a very new project. I would not use the server in serious production. That said, [here's a demo using it](http://jackangers.com/imgix-wall).
