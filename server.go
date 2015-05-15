@@ -151,6 +151,10 @@ func (s *S3pal) startServer() {
 		}
 	})
 
+	r.OPTIONS("/upload/file", func(c *gin.Context) {
+
+	})
+
 	r.POST("/upload/file", func(c *gin.Context) {
 		file, header, err := c.Request.FormFile("file")
 
