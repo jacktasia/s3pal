@@ -29,12 +29,6 @@ func forcePort(port int) int {
 	return port
 }
 
-// TODO: handle host protocol...
-
-func makeOrigin(host string) string {
-	return fmt.Sprintf("https://%v http://%v", host, host)
-}
-
 func (s *S3pal) CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqOrigin := c.Request.Header.Get("Origin")
@@ -43,9 +37,9 @@ func (s *S3pal) CORSMiddleware() gin.HandlerFunc {
 		if len(allowedOrigins) == 0 || StringInSlice("*", allowedOrigins) {
 			origin = "*"
 		} else if StringInSlice(reqOrigin, allowedOrigins) {
-			origin = makeOrigin(reqOrigin)
+			origin = reqOrigin
 		} else {
-			origin = makeOrigin(allowedOrigins[0])
+			origin = allowedOrigins[0]
 		}
 
 		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
@@ -149,6 +143,10 @@ func (s *S3pal) startServer() {
 			}
 			c.JSON(500, response)
 		}
+	})
+
+	r.OPTIONS("/upload/url", func(c *gin.Context) {
+
 	})
 
 	r.OPTIONS("/upload/file", func(c *gin.Context) {
