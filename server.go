@@ -29,15 +29,31 @@ func forcePort(port int) int {
 	return port
 }
 
-func CORSMiddleware() gin.HandlerFunc {
+// TODO: handle host protocol...
+
+func makeOrigin(host string) string {
+	return fmt.Sprintf("https://%v http://%v", host, host)
+}
+
+func (s *S3pal) CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		reqHost := c.Request.Header.Get("host")
+		allowedOrigins := s.Config.Server.AllowedOrigins
+		var origin string
+		if len(allowedOrigins) == 0 || StringInSlice("*", allowedOrigins) {
+			origin = "*"
+		} else if StringInSlice(reqHost, allowedOrigins) {
+			origin = makeOrigin(reqHost)
+		} else {
+			origin = makeOrigin(allowedOrigins[0])
+		}
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
 
 		if c.Request.Method == "OPTIONS" {
-			//c.String(204, "")
 			c.AbortWithStatus(204)
 			return
 		}
@@ -61,7 +77,7 @@ func (s *S3pal) startServer() {
 	listCache.timeout = map[string]int64{}
 	listCache.items = map[string][]string{}
 
-	r.Use(CORSMiddleware())
+	r.Use(s.CORSMiddleware())
 
 	faviconStr := "R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs="
 	favicon, _ := base64.StdEncoding.DecodeString(faviconStr)

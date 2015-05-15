@@ -32,10 +32,11 @@ type ServerConfig struct {
 	NoForcePort       bool  `toml:"no_force_port"`
 	Host              string
 	Prefix            string
-	Debug             bool   `toml:"debug"`
-	StaticPath        string `toml:"static_path"`
-	SignTTL           int64  `toml:"sign_ttl"`
-	SignURL           bool   `toml:"sign_url"`
+	Debug             bool     `toml:"debug"`
+	StaticPath        string   `toml:"static_path"`
+	SignTTL           int64    `toml:"sign_ttl"`
+	SignURL           bool     `toml:"sign_url"`
+	AllowedOrigins    []string `toml:"allowed_origins"`
 }
 
 type FolderWatchUploadConfig struct {
@@ -66,7 +67,7 @@ type S3pal struct {
 	Config S3palConfig
 }
 
-func stringInSlice(a string, list []string) bool {
+func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
 			return true
@@ -87,7 +88,7 @@ func strToBool(s string) bool {
 var ValidACLs = []string{"private", "public-read", "public-read-write", "authenticated-read", "bucket-owner-read", "bucket-owner-full-control"}
 
 func IsValidACL(acl string) bool {
-	return stringInSlice(acl, ValidACLs)
+	return StringInSlice(acl, ValidACLs)
 }
 
 func (s *S3pal) makeUrl(filename string) string {
