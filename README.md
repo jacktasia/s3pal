@@ -92,6 +92,7 @@ You configure `s3pal` using a toml config file. `s3pal` automatically looks for 
 	cache_ttl = 10
 	max_post_bytes = 3000000 # ~3MB (unlimited if not set)
 	static_path="/home/jack/assets" # directory served from /static (optional)
+	allowed_origins=["http://jackangers.com", "http://blah.com"] # for cors. open "*" if unset
 
 	[folderwatchupload]
 	path = "/Users/jack/Desktop/toS3" # or pass in command line

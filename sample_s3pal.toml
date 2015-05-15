@@ -21,6 +21,7 @@ max_post_bytes = 3000000 # ~3MB
 static_path="/home/jack/assets" # directory served from /static (optional)
 sign_ttl = 300 # in seconds, so this is 5 minutes
 sign_url = true # always sign URLs if a URL is requested. this defaults to false
+allowed_origins=["http://jackangers.com", "http://blah.com"] # for cors. open "*" if unset
 
 # for watch-folder command
 [folderwatchupload]
