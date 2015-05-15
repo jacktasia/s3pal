@@ -37,13 +37,13 @@ func makeOrigin(host string) string {
 
 func (s *S3pal) CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		reqHost := c.Request.Header.Get("host")
+		reqOrigin := c.Request.Header.Get("Origin")
 		allowedOrigins := s.Config.Server.AllowedOrigins
 		var origin string
 		if len(allowedOrigins) == 0 || StringInSlice("*", allowedOrigins) {
 			origin = "*"
-		} else if StringInSlice(reqHost, allowedOrigins) {
-			origin = makeOrigin(reqHost)
+		} else if StringInSlice(reqOrigin, allowedOrigins) {
+			origin = makeOrigin(reqOrigin)
 		} else {
 			origin = makeOrigin(allowedOrigins[0])
 		}
