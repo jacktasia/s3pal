@@ -5,9 +5,10 @@ s3pal [![Build Status](https://travis-ci.org/jacktasia/s3pal.svg?branch=master)]
 A command line tool to help developers interact with s3.
 
 * uploading of local files and urls
-* run a server for easy browser uploading/listing (with wide open CORS)
+* run a server for easy browser uploading/listing (with configurable CORS)
 * watch a folder for new files and have them be auto uploaded
-* it's Go so once you have a binary it's easy to move around
+* it's Go so you only need the binary
+* easy to extend for your own needs (or PRs welcome)
 
 Here's [an example](http://jackangers.com/imgix-wall) of me using the server feature.
 
@@ -15,7 +16,7 @@ Here's [an example](http://jackangers.com/imgix-wall) of me using the server fea
 * [Configuring](#configuring)
 * [Installing](#installing)
 * [Building](#building)
-* [Warnings](#warnings)
+* [Notes and Warnings](#notes_warnings)
 
 
 <a name="overview"></a>
@@ -138,7 +139,10 @@ If you have a proper `go` environment setup then it should be as easy as:
 	#emacs s3pal.toml
 	#./s3pal server
 
-<a name="warnings"></a>
-## Warnings
+<a name="notes_warnings"></a>
+## Notes and Warnings
 
-This is a very new project. I would not use the server in serious production. That said, [here's a demo using it](http://jackangers.com/imgix-wall).
+* This was initially made for quick and easy proof of concepts. [Here's a demo using it](http://jackangers.com/imgix-wall).
+* This is untested for high load production environments.
+* Please be careful and [open an issue](https://github.com/jacktasia/s3pal/issues) if you notice one.
+* [Pull Requests](https://github.com/jacktasia/s3pal/pulls) are welcome.
