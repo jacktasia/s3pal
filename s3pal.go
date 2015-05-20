@@ -37,6 +37,7 @@ type ServerConfig struct {
 	SignTTL           int64    `toml:"sign_ttl"`
 	SignURL           bool     `toml:"sign_url"`
 	AllowedOrigins    []string `toml:"allowed_origins"`
+	ShowUploadForm    bool     `toml:"show_upload_form"`
 }
 
 type FolderWatchUploadConfig struct {

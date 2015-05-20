@@ -104,7 +104,10 @@ func (s *S3pal) startServer() {
 	}
 
 	r.GET("/", func(g *gin.Context) {
-		content := s.getUploadForm()
+		content := ""
+		if s.Config.Server.ShowUploadForm {
+			content = s.getUploadForm()
+		}
 		g.Writer.Header().Set("Content-Type", "text/html")
 		g.Writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
 		g.Writer.Write([]byte(content))
